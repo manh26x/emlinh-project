@@ -1,0 +1,553 @@
+class ChatManager {
+    constructor() {
+        this.sessionId = null;
+        this.currentMessageType = 'conversation';
+        this.isLoading = false;
+        
+        this.initializeElements();
+        this.bindEvents();
+        this.generateSessionId();
+        this.loadRecentIdeas();
+    }
+    
+    initializeElements() {
+        this.chatForm = document.getElementById('chatForm');
+        this.messageInput = document.getElementById('messageInput');
+        this.sendButton = document.getElementById('sendButton');
+        this.chatMessages = document.getElementById('chatMessages');
+        this.messagesContainer = document.getElementById('messagesContainer');
+        this.typingIndicator = document.getElementById('typingIndicator');
+        this.sessionIdDisplay = document.getElementById('sessionId');
+        this.newSessionBtn = document.getElementById('newSessionBtn');
+        this.recentIdeas = document.getElementById('recentIdeas');
+    }
+    
+    bindEvents() {
+        // Chat form submit
+        this.chatForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.sendMessage();
+        });
+        
+        // Chat type change
+        document.querySelectorAll('input[name="chatType"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                this.currentMessageType = e.target.value;
+                this.updateChatTypeUI();
+            });
+        });
+        
+        // New session button
+        this.newSessionBtn.addEventListener('click', () => {
+            this.startNewSession();
+        });
+        
+        // Quick prompt buttons
+        document.querySelectorAll('.quick-prompt').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const prompt = e.target.dataset.prompt;
+                const type = e.target.dataset.type;
+                this.useQuickPrompt(prompt, type);
+            });
+        });
+        
+        // Video creation button
+        const createVideoBtn = document.getElementById('createVideoBtn');
+        if (createVideoBtn) {
+            createVideoBtn.addEventListener('click', () => {
+                this.showVideoCreationModal();
+            });
+        }
+        
+        // Auto-resize textarea and enter key handling
+        this.messageInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                this.sendMessage();
+            }
+        });
+    }
+    
+    generateSessionId() {
+        this.sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        this.sessionIdDisplay.textContent = this.sessionId;
+    }
+    
+    startNewSession() {
+        this.generateSessionId();
+        this.clearChat();
+        this.addWelcomeMessage();
+        this.showNotification('Đã bắt đầu phiên chat mới', 'success');
+    }
+    
+    clearChat() {
+        this.chatMessages.innerHTML = '';
+    }
+    
+    addWelcomeMessage() {
+        const welcomeMessage = `
+            <div class="message ai-message mb-3">
+                <div class="d-flex">
+                    <div class="avatar bg-primary text-white rounded-circle me-2 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                        🤖
+                    </div>
+                    <div class="message-content">
+                        <div class="bg-light rounded p-3">
+                            Xin chào! Tôi là AI Assistant của bạn. Tôi có thể giúp bạn:
+                            <ul class="mb-0 mt-2">
+                                <li><strong>Trò chuyện</strong>: Thảo luận ý tưởng và nhận tư vấn</li>
+                                <li><strong>Brainstorm</strong>: Tạo ra nhiều ý tưởng sáng tạo</li>
+                                <li><strong>Lập kế hoạch</strong>: Xây dựng kế hoạch chi tiết cho content</li>
+                            </ul>
+                        </div>
+                        <small class="text-muted">Vừa xong</small>
+                    </div>
+                </div>
+            </div>
+        `;
+        this.chatMessages.innerHTML = welcomeMessage;
+    }
+    
+    async sendMessage() {
+        if (this.isLoading) return;
+        
+        const message = this.messageInput.value.trim();
+        if (!message) return;
+        
+        // Add user message to chat
+        this.addUserMessage(message);
+        this.messageInput.value = '';
+        this.setLoading(true);
+        
+        try {
+            // Show typing indicator
+            this.showTypingIndicator();
+            
+            const response = await fetch('/api/chat/send', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    message: message,
+                    session_id: this.sessionId,
+                    type: this.currentMessageType
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                this.addAIMessage(data.ai_response, data.timestamp);
+                
+                // If an idea was created, show notification and refresh ideas
+                if (data.idea_created) {
+                    this.showNotification('💡 Đã tạo ý tưởng mới!', 'success');
+                    this.loadRecentIdeas();
+                }
+            } else {
+                this.showError('Lỗi: ' + (data.message || 'Không thể gửi tin nhắn'));
+            }
+            
+        } catch (error) {
+            console.error('Chat error:', error);
+            this.showError('Lỗi kết nối: ' + error.message);
+        } finally {
+            this.hideTypingIndicator();
+            this.setLoading(false);
+            this.scrollToBottom();
+        }
+    }
+    
+    addUserMessage(message) {
+        const timestamp = new Date().toLocaleTimeString('vi-VN');
+        const messageHtml = `
+            <div class="message user-message mb-3">
+                <div class="d-flex justify-content-end">
+                    <div class="message-content">
+                        <div class="bg-primary text-white rounded p-3">
+                            ${this.escapeHtml(message)}
+                        </div>
+                        <small class="text-muted d-block text-end">${timestamp}</small>
+                    </div>
+                    <div class="avatar bg-secondary text-white rounded-circle ms-2 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                        👤
+                    </div>
+                </div>
+            </div>
+        `;
+        this.chatMessages.insertAdjacentHTML('beforeend', messageHtml);
+        this.scrollToBottom();
+    }
+    
+    addAIMessage(message, timestamp) {
+        const timeStr = timestamp ? new Date(timestamp).toLocaleTimeString('vi-VN') : new Date().toLocaleTimeString('vi-VN');
+        const messageHtml = `
+            <div class="message ai-message mb-3">
+                <div class="d-flex">
+                    <div class="avatar bg-primary text-white rounded-circle me-2 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                        🤖
+                    </div>
+                    <div class="message-content">
+                        <div class="bg-light rounded p-3">
+                            ${this.formatMessage(message)}
+                        </div>
+                        <small class="text-muted">${timeStr}</small>
+                    </div>
+                </div>
+            </div>
+        `;
+        this.chatMessages.insertAdjacentHTML('beforeend', messageHtml);
+    }
+    
+    formatMessage(message) {
+        // Convert line breaks and format basic markdown
+        let formatted = this.escapeHtml(message)
+            .replace(/\n/g, '<br>')
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/`(.*?)`/g, '<code>$1</code>');
+        
+        // Look for video ID pattern and embed video player
+        const videoIdMatch = formatted.match(/🆔 <strong>Video ID:<\/strong> (\d+)/);
+        if (videoIdMatch) {
+            const videoId = videoIdMatch[1];
+            
+            // Extract video title and topic from message
+            const titleMatch = formatted.match(/<strong>Chủ đề:<\/strong> ([^<]+)/);
+            const videoTitle = titleMatch ? titleMatch[1].trim() : 'Video AI';
+            
+            formatted += `<br><br><div class="video-embed-container mt-3">
+                <div class="video-player-wrapper">
+                    <video controls class="embedded-video" preload="metadata" poster="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 180'%3E%3Crect width='320' height='180' fill='%23f8f9fa'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%23666'%3E🎬 ${this.escapeHtml(videoTitle)}%3C/text%3E%3C/svg%3E">
+                        <source src="/api/videos/${videoId}/file" type="video/mp4">
+                        Trình duyệt không hỗ trợ video HTML5.
+                    </video>
+                    <div class="video-controls">
+                        <button class="btn btn-sm btn-outline-primary me-2" onclick="chatManager.downloadVideo(${videoId})">
+                            <i class="fas fa-download"></i> Tải về
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary me-2" onclick="chatManager.viewVideoDetail(${videoId})">
+                            <i class="fas fa-info-circle"></i> Chi tiết
+                        </button>
+                        <a href="/videos" class="btn btn-sm btn-outline-success">
+                            <i class="fas fa-film"></i> Video Library
+                        </a>
+                    </div>
+                </div>
+            </div>`;
+        }
+        
+        return formatted;
+    }
+    
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    showTypingIndicator() {
+        this.typingIndicator.style.display = 'block';
+        this.scrollToBottom();
+    }
+    
+    hideTypingIndicator() {
+        this.typingIndicator.style.display = 'none';
+    }
+    
+    setLoading(loading) {
+        this.isLoading = loading;
+        this.sendButton.disabled = loading;
+        this.messageInput.disabled = loading;
+        
+        if (loading) {
+            this.sendButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        } else {
+            this.sendButton.innerHTML = '<i class="fas fa-paper-plane"></i>';
+        }
+    }
+    
+    scrollToBottom() {
+        setTimeout(() => {
+            this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+        }, 100);
+    }
+    
+    updateChatTypeUI() {
+        const typeLabels = {
+            'conversation': { icon: '💬', color: 'primary' },
+            'brainstorm': { icon: '💡', color: 'success' },
+            'planning': { icon: '📋', color: 'warning' }
+        };
+        
+        const currentType = typeLabels[this.currentMessageType];
+        this.messageInput.placeholder = `${currentType.icon} Nhập tin nhắn ${this.currentMessageType}...`;
+    }
+    
+    useQuickPrompt(prompt, type) {
+        // Set message type
+        document.querySelector(`input[value="${type}"]`).checked = true;
+        this.currentMessageType = type;
+        this.updateChatTypeUI();
+        
+        // Set message input
+        this.messageInput.value = prompt;
+        this.messageInput.focus();
+        
+        // Optional: Auto-send after a short delay
+        setTimeout(() => {
+            if (this.messageInput.value === prompt) {
+                this.sendMessage();
+            }
+        }, 500);
+    }
+    
+    async loadRecentIdeas() {
+        try {
+            const response = await fetch('/api/ideas?per_page=5');
+            const data = await response.json();
+            
+            if (data.success && data.ideas.length > 0) {
+                this.displayRecentIdeas(data.ideas);
+            } else {
+                this.recentIdeas.innerHTML = '<p class="text-muted small">Chưa có ý tưởng nào được tạo</p>';
+            }
+        } catch (error) {
+            console.error('Error loading ideas:', error);
+        }
+    }
+    
+    displayRecentIdeas(ideas) {
+        const ideasHtml = ideas.map(idea => `
+            <div class="idea-item mb-2 p-2 border rounded small">
+                <div class="fw-bold text-truncate">${this.escapeHtml(idea.title)}</div>
+                <div class="text-muted small">
+                    <span class="badge bg-${this.getStatusColor(idea.status)} idea-badge">${idea.status}</span>
+                    ${idea.content_type || 'general'}
+                </div>
+            </div>
+        `).join('');
+        
+        this.recentIdeas.innerHTML = ideasHtml;
+    }
+    
+    getStatusColor(status) {
+        const colors = {
+            'draft': 'secondary',
+            'in_progress': 'warning',
+            'completed': 'success',
+            'published': 'primary'
+        };
+        return colors[status] || 'secondary';
+    }
+    
+    showNotification(message, type = 'info') {
+        // Create Bootstrap toast notification
+        const toast = document.createElement('div');
+        toast.className = `toast align-items-center text-white bg-${type} border-0`;
+        toast.setAttribute('role', 'alert');
+        toast.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">${message}</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        `;
+        
+        // Add to page
+        let toastContainer = document.querySelector('.toast-container');
+        if (!toastContainer) {
+            toastContainer = document.createElement('div');
+            toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+            document.body.appendChild(toastContainer);
+        }
+        
+        toastContainer.appendChild(toast);
+        
+        // Show toast
+        const bsToast = new bootstrap.Toast(toast);
+        bsToast.show();
+        
+        // Auto remove after hidden
+        toast.addEventListener('hidden.bs.toast', () => {
+            toast.remove();
+        });
+    }
+    
+    showError(message) {
+        this.addAIMessage(`❌ ${message}`, null);
+        this.showNotification(message, 'danger');
+    }
+    
+    downloadVideo(videoId) {
+        const link = document.createElement('a');
+        link.href = `/api/videos/${videoId}/file`;
+        link.download = '';
+        link.click();
+        this.showNotification('Đang tải video...', 'info');
+    }
+    
+    async viewVideoDetail(videoId) {
+        try {
+            const response = await fetch(`/api/videos/${videoId}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                const video = data.video;
+                const modalHtml = `
+                    <div class="modal fade" id="videoDetailModal" tabindex="-1">
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Chi tiết Video</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <video controls class="w-100" style="max-height: 300px;">
+                                                <source src="/api/videos/${videoId}/file" type="video/mp4">
+                                                Trình duyệt không hỗ trợ video.
+                                            </video>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <h5>${this.escapeHtml(video.title)}</h5>
+                                            <p><strong>Chủ đề:</strong> ${this.escapeHtml(video.topic)}</p>
+                                            <p><strong>Thời lượng:</strong> ${video.duration} giây</p>
+                                            <p><strong>Trạng thái:</strong> <span class="badge bg-success">Hoàn thành</span></p>
+                                            <p><strong>Ngày tạo:</strong> ${new Date(video.created_at).toLocaleDateString('vi-VN')}</p>
+                                            ${video.script ? `
+                                                <div class="mt-3">
+                                                    <h6>Script:</h6>
+                                                    <div class="bg-light p-3 rounded small">
+                                                        ${this.escapeHtml(video.script)}
+                                                    </div>
+                                                </div>
+                                            ` : ''}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                                    <button type="button" class="btn btn-primary" onclick="chatManager.downloadVideo(${videoId})">
+                                        <i class="fas fa-download"></i> Tải về
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Remove existing modal if any
+                const existingModal = document.getElementById('videoDetailModal');
+                if (existingModal) {
+                    existingModal.remove();
+                }
+                
+                // Add modal to body
+                document.body.insertAdjacentHTML('beforeend', modalHtml);
+                
+                // Show modal
+                const modal = new bootstrap.Modal(document.getElementById('videoDetailModal'));
+                modal.show();
+                
+                // Clean up when modal is hidden
+                document.getElementById('videoDetailModal').addEventListener('hidden.bs.modal', function() {
+                    this.remove();
+                });
+                
+            } else {
+                this.showNotification('Lỗi khi tải chi tiết video: ' + data.message, 'danger');
+            }
+            
+        } catch (error) {
+            console.error('Error loading video detail:', error);
+            this.showNotification('Lỗi kết nối khi tải chi tiết video', 'danger');
+        }
+    }
+    
+    showVideoCreationModal() {
+        const topic = prompt('Nhập chủ đề video bạn muốn tạo:');
+        if (!topic) return;
+        
+        this.createVideo(topic);
+    }
+    
+    async createVideo(topic, duration = 15, composition = 'Scene-Landscape', background = 'office', voice = 'nova') {
+        try {
+            this.setLoading(true);
+            this.addUserMessage(`Tạo video về: ${topic}`);
+            this.showTypingIndicator();
+            
+            const response = await fetch('/api/chat/create-video', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    topic: topic,
+                    duration: duration,
+                    composition: composition,
+                    background: background,
+                    voice: voice
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                this.addAIMessage(data.result);
+                this.showNotification('🎬 Video được tạo thành công!', 'success');
+            } else {
+                this.showError('Lỗi tạo video: ' + data.message);
+            }
+            
+        } catch (error) {
+            console.error('Video creation error:', error);
+            this.showError('Lỗi kết nối khi tạo video: ' + error.message);
+        } finally {
+            this.hideTypingIndicator();
+            this.setLoading(false);
+            this.scrollToBottom();
+        }
+    }
+}
+
+// Initialize chat manager when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    window.chatManager = new ChatManager();
+});
+
+// Add some utility functions
+window.copyToClipboard = function(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        window.chatManager.showNotification('Đã sao chép vào clipboard', 'success');
+    });
+};
+
+window.exportChat = function() {
+    const messages = document.querySelectorAll('.message');
+    const chatData = Array.from(messages).map(msg => {
+        const isUser = msg.classList.contains('user-message');
+        const content = msg.querySelector('.message-content > div').textContent.trim();
+        const timestamp = msg.querySelector('small').textContent;
+        
+        return {
+            type: isUser ? 'user' : 'ai',
+            content: content,
+            timestamp: timestamp
+        };
+    });
+    
+    const dataStr = JSON.stringify(chatData, null, 2);
+    const dataBlob = new Blob([dataStr], {type: 'application/json'});
+    const url = URL.createObjectURL(dataBlob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `chat_export_${window.chatManager.sessionId}.json`;
+    link.click();
+    
+    URL.revokeObjectURL(url);
+    window.chatManager.showNotification('Đã export chat thành công', 'success');
+};

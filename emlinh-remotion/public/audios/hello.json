@@ -1,0 +1,13 @@
+{
+  "metadata": {
+    "soundFile": "hello.ogg",
+    "duration": 2.016009
+  },
+  "mouthCues": [
+    {
+      "start": 0.0,
+      "end": 2.016009,
+      "value": "A"
+    }
+  ]
+}

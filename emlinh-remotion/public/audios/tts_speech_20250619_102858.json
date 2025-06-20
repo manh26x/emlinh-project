@@ -1,0 +1,13 @@
+{
+  "metadata": {
+    "soundFile": "tts_speech_20250619_102858.ogg",
+    "duration": 5.208005
+  },
+  "mouthCues": [
+    {
+      "start": 0.0,
+      "end": 5.208005,
+      "value": "A"
+    }
+  ]
+}

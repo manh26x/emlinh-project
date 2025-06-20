@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+
+{% block title %}Chi tiết Video - {{ video.title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h3 mb-1">{{ video.title }}</h1>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="/">Trang chủ</a></li>
+                            <li class="breadcrumb-item"><a href="/videos">Video Library</a></li>
+                            <li class="breadcrumb-item active">{{ video.title }}</li>
+                        </ol>
+                    </nav>
+                </div>
+                <div>
+                    <a href="/videos" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left"></i> Quay lại
+                    </a>
+                </div>
+            </div>
+
+            <!-- Video Player & Details -->
+            <div class="row">
+                <!-- Video Player -->
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-body">
+                            {% if video.status == 'completed' %}
+                                <video controls class="video-player w-100" style="max-height: 500px;">
+                                    <source src="/api/videos/{{ video.id }}/file" type="video/mp4">
+                                    Trình duyệt của bạn không hỗ trợ video HTML5.
+                                </video>
+                                
+                                <!-- Video Actions -->
+                                <div class="mt-3 d-flex gap-2 flex-wrap">
+                                    <a href="/api/videos/{{ video.id }}/file" 
+                                       class="btn btn-primary" download>
+                                        <i class="fas fa-download"></i> Tải về video
+                                    </a>
+                                    <button class="btn btn-outline-secondary" 
+                                            onclick="copyVideoLink({{ video.id }})">
+                                        <i class="fas fa-link"></i> Sao chép link
+                                    </button>
+                                    <button class="btn btn-outline-danger" 
+                                            onclick="deleteVideo({{ video.id }})">
+                                        <i class="fas fa-trash"></i> Xóa video
+                                    </button>
+                                </div>
+                            {% elif video.status == 'rendering' %}
+                                <div class="text-center py-5">
+                                    <div class="spinner-border text-primary mb-3" role="status">
+                                        <span class="visually-hidden">Đang render...</span>
+                                    </div>
+                                    <h5>Video đang được render...</h5>
+                                    <p class="text-muted">Vui lòng đợi một chút, video sẽ sẵn sàng soon!</p>
+                                    <button class="btn btn-outline-primary" onclick="location.reload()">
+                                        <i class="fas fa-sync"></i> Refresh
+                                    </button>
+                                </div>
+                            {% else %}
+                                <div class="text-center py-5">
+                                    <div class="text-danger mb-3">
+                                        <i class="fas fa-exclamation-triangle fa-3x"></i>
+                                    </div>
+                                    <h5>Video render thất bại</h5>
+                                    <p class="text-muted">Có lỗi xảy ra trong quá trình tạo video này.</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Video Information -->
+                <div class="col-lg-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Thông tin Video</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <strong>Chủ đề:</strong>
+                                <p class="mb-1">{{ video.topic }}</p>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <strong>Thời lượng:</strong>
+                                <p class="mb-1">{{ video.duration }} giây</p>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <strong>Trạng thái:</strong>
+                                <p class="mb-1">
+                                    {% if video.status == 'completed' %}
+                                        <span class="badge bg-success">Hoàn thành</span>
+                                    {% elif video.status == 'rendering' %}
+                                        <span class="badge bg-warning">Đang render</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Thất bại</span>
+                                    {% endif %}
+                                </p>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <strong>Ngày tạo:</strong>
+                                <p class="mb-1">{{ video.created_at.strftime('%d/%m/%Y %H:%M') }}</p>
+                            </div>
+                            
+                            {% if video.file_size %}
+                            <div class="mb-3">
+                                <strong>Kích thước file:</strong>
+                                <p class="mb-1">{{ "%.1f"|format(video.file_size / 1024 / 1024) }} MB</p>
+                            </div>
+                            {% endif %}
+                            
+                            <div class="mb-3">
+                                <strong>Composition:</strong>
+                                <p class="mb-1">{{ video.composition }}</p>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <strong>Background:</strong>
+                                <p class="mb-1">{{ video.background }}</p>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <strong>Voice:</strong>
+                                <p class="mb-1">{{ video.voice }}</p>
+                            </div>
+                            
+                            {% if video.job_id %}
+                            <div class="mb-3">
+                                <strong>Job ID:</strong>
+                                <p class="mb-1"><code>{{ video.job_id }}</code></p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Script Card -->
+                    {% if video.script %}
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Script Video</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="bg-light p-3 rounded">
+                                <p class="mb-0 small">{{ video.script }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script>
+function copyVideoLink(videoId) {
+    const url = `${window.location.origin}/videos/${videoId}`;
+    navigator.clipboard.writeText(url).then(function() {
+        showNotification('Đã sao chép link video!', 'success');
+    }).catch(function() {
+        // Fallback cho trình duyệt cũ
+        const textArea = document.createElement('textarea');
+        textArea.value = url;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        showNotification('Đã sao chép link video!', 'success');
+    });
+}
+
+function deleteVideo(videoId) {
+    if (confirm('Bạn có chắc chắn muốn xóa video này? Hành động này không thể hoàn tác.')) {
+        fetch(`/api/videos/${videoId}`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification('Video đã được xóa thành công!', 'success');
+                setTimeout(() => {
+                    window.location.href = '/videos';
+                }, 1500);
+            } else {
+                showNotification('Lỗi khi xóa video: ' + data.message, 'danger');
+            }
+        })
+        .catch(error => {
+            showNotification('Lỗi kết nối khi xóa video', 'danger');
+            console.error('Error:', error);
+        });
+    }
+}
+
+function showNotification(message, type = 'info') {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    
+    notification.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.remove();
+        }
+    }, 5000);
+}
+</script>
+{% endblock %} 

@@ -1,0 +1,38 @@
+{
+  "name": "emlinh-remotion",
+  "version": "1.0.0",
+  "description": "A React Three Fiber Project",
+  "repository": {},
+  "license": "UNLICENSED",
+  "private": true,
+  "dependencies": {
+    "@react-three/drei": "^10.1.2",
+    "@react-three/fiber": "^9.1.2",
+    "@remotion/cli": "4.0.314",
+    "@remotion/media-utils": "4.0.314",
+    "@remotion/three": "4.0.314",
+    "@remotion/zod-types": "4.0.314",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "remotion": "4.0.314",
+    "three": "^0.177.0",
+    "zod": "3.22.3"
+  },
+  "devDependencies": {
+    "@remotion/eslint-config-flat": "4.0.314",
+    "@types/react": "19.0.0",
+    "@types/three": "^0.177.0",
+    "@types/web": "0.0.166",
+    "eslint": "9.19.0",
+    "prettier": "3.3.3",
+    "typescript": "5.8.2"
+  },
+  "scripts": {
+    "dev": "REMOTION_CONCURRENCY=1 remotion studio",
+    "build": "remotion bundle",
+    "upgrade": "remotion upgrade",
+    "lint": "eslint src && tsc",
+    "render": "remotion render --concurrency=1",
+    "render-fast": "remotion render --concurrency=2"
+  }
+}

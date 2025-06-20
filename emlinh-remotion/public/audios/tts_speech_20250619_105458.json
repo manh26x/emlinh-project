@@ -1,0 +1,41 @@
+{
+  "metadata": {
+    "soundFile": "/home/mike/Documents/Code/emlinh_projects/emlinh-remotion/public/audios/tts_speech_20250619_105458.ogg",
+    "duration": 4.92
+  },
+  "mouthCues": [
+    { "start": 0.00, "end": 0.01, "value": "X" },
+    { "start": 0.01, "end": 0.17, "value": "B" },
+    { "start": 0.17, "end": 0.45, "value": "F" },
+    { "start": 0.45, "end": 0.65, "value": "X" },
+    { "start": 0.65, "end": 0.75, "value": "B" },
+    { "start": 0.75, "end": 0.96, "value": "C" },
+    { "start": 0.96, "end": 1.31, "value": "B" },
+    { "start": 1.31, "end": 1.59, "value": "C" },
+    { "start": 1.59, "end": 1.66, "value": "B" },
+    { "start": 1.66, "end": 1.85, "value": "D" },
+    { "start": 1.85, "end": 1.90, "value": "C" },
+    { "start": 1.90, "end": 2.29, "value": "B" },
+    { "start": 2.29, "end": 2.34, "value": "G" },
+    { "start": 2.34, "end": 2.38, "value": "D" },
+    { "start": 2.38, "end": 2.46, "value": "A" },
+    { "start": 2.46, "end": 2.57, "value": "C" },
+    { "start": 2.57, "end": 2.71, "value": "F" },
+    { "start": 2.71, "end": 2.85, "value": "C" },
+    { "start": 2.85, "end": 2.92, "value": "B" },
+    { "start": 2.92, "end": 3.27, "value": "C" },
+    { "start": 3.27, "end": 3.34, "value": "B" },
+    { "start": 3.34, "end": 3.61, "value": "X" },
+    { "start": 3.61, "end": 3.70, "value": "B" },
+    { "start": 3.70, "end": 3.84, "value": "C" },
+    { "start": 3.84, "end": 4.19, "value": "B" },
+    { "start": 4.19, "end": 4.28, "value": "A" },
+    { "start": 4.28, "end": 4.35, "value": "C" },
+    { "start": 4.35, "end": 4.41, "value": "H" },
+    { "start": 4.41, "end": 4.48, "value": "B" },
+    { "start": 4.48, "end": 4.55, "value": "D" },
+    { "start": 4.55, "end": 4.63, "value": "A" },
+    { "start": 4.63, "end": 4.84, "value": "B" },
+    { "start": 4.84, "end": 4.92, "value": "X" }
+  ]
+}

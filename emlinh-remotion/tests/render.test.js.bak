@@ -1,0 +1,265 @@
+/**
+ * Unit tests for rendering different configurations
+ * Run with: node tests/render.test.js
+ */
+
+const { execSync } = require('child_process');
+const fs = require('fs');
+const path = require('path');
+
+// Configuration for different test cases
+const testCases = [
+  {
+    name: 'Basic Audio Render',
+    props: {
+      audioFileName: 'batnhatamkinh.wav'
+    },
+    expected: {
+      shouldSucceed: true,
+      minDuration: 5000, // ms
+      maxDuration: 15000, // ms
+    }
+  },
+  {
+    name: 'Full Configuration',
+    props: {
+      backgroundScene: 'none',
+      durationInSeconds: 10,
+      audioFileName: 'batnhatamkinh.wav',
+      cameraFov: 30,
+      cameraPosition: [0, 0.7, 4.5]
+    },
+    expected: {
+      shouldSucceed: true,
+      minDuration: 8000,
+      maxDuration: 20000,
+    }
+  },
+  {
+    name: 'Office Background',
+    props: {
+      backgroundScene: 'office',
+      durationInSeconds: 5,
+      audioFileName: 'batnhatamkinh.wav'
+    },
+    expected: {
+      shouldSucceed: true,
+      minDuration: 5000,
+      maxDuration: 15000,
+    }
+  },
+  {
+    name: 'Abstract Background',
+    props: {
+      backgroundScene: 'abstract',
+      durationInSeconds: 5,
+      audioFileName: 'batnhatamkinh.wav'
+    },
+    expected: {
+      shouldSucceed: true,
+      minDuration: 5000,
+      maxDuration: 15000,
+    }
+  },
+  {
+    name: 'No Audio',
+    props: {
+      backgroundScene: 'none',
+      durationInSeconds: 5,
+      audioFileName: 'None'
+    },
+    expected: {
+      shouldSucceed: true,
+      minDuration: 3000,
+      maxDuration: 10000,
+    }
+  },
+  {
+    name: 'Different Camera Position',
+    props: {
+      backgroundScene: 'none',
+      durationInSeconds: 5,
+      audioFileName: 'batnhatamkinh.wav',
+      cameraPosition: [1, 1, 6]
+    },
+    expected: {
+      shouldSucceed: true,
+      minDuration: 5000,
+      maxDuration: 15000,
+    }
+  }
+];
+
+// Helper functions
+function runRenderTest(testCase) {
+  const outputFile = `out/test-${testCase.name.toLowerCase().replace(/\s+/g, '-')}.mp4`;
+  const propsString = JSON.stringify(testCase.props);
+  
+  console.log(`\n🧪 Testing: ${testCase.name}`);
+  console.log(`📝 Props: ${propsString}`);
+  console.log(`📁 Output: ${outputFile}`);
+  
+  const startTime = Date.now();
+  
+  try {
+    // Remove existing output file if it exists
+    if (fs.existsSync(outputFile)) {
+      fs.unlinkSync(outputFile);
+    }
+    
+    // Run the render command
+    const command = `npx remotion render Scene-Portrait --props='${propsString}' --output=${outputFile}`;
+    
+    console.log(`⚡ Running command: ${command}`);
+    
+    const result = execSync(command, {
+      stdio: 'pipe',
+      encoding: 'utf8',
+      timeout: 60000 // 60 second timeout
+    });
+    
+    const duration = Date.now() - startTime;
+    
+    // Check if output file was created
+    if (!fs.existsSync(outputFile)) {
+      throw new Error('Output file was not created');
+    }
+    
+    // Check file size
+    const stats = fs.statSync(outputFile);
+    const fileSizeMB = (stats.size / (1024 * 1024)).toFixed(2);
+    
+    // Validate duration
+    const withinExpectedDuration = duration >= testCase.expected.minDuration && 
+                                  duration <= testCase.expected.maxDuration;
+    
+    if (testCase.expected.shouldSucceed) {
+      console.log(`✅ SUCCESS: ${testCase.name}`);
+      console.log(`   ⏱️  Duration: ${duration}ms (expected: ${testCase.expected.minDuration}-${testCase.expected.maxDuration}ms)`);
+      console.log(`   📦 File size: ${fileSizeMB}MB`);
+      console.log(`   ✅ Duration check: ${withinExpectedDuration ? 'PASS' : 'WARN - outside expected range'}`);
+      
+      return {
+        success: true,
+        duration,
+        fileSize: stats.size,
+        withinExpectedDuration
+      };
+    } else {
+      console.log(`❌ UNEXPECTED SUCCESS: ${testCase.name} should have failed`);
+      return {
+        success: false,
+        error: 'Expected failure but succeeded'
+      };
+    }
+    
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    
+    if (testCase.expected.shouldSucceed) {
+      console.log(`❌ FAILED: ${testCase.name}`);
+      console.log(`   ⏱️  Duration: ${duration}ms`);
+      console.log(`   ❌ Error: ${error.message}`);
+      
+      return {
+        success: false,
+        duration,
+        error: error.message
+      };
+    } else {
+      console.log(`✅ EXPECTED FAILURE: ${testCase.name}`);
+      console.log(`   ⏱️  Duration: ${duration}ms`);
+      console.log(`   ✅ Error (expected): ${error.message}`);
+      
+      return {
+        success: true,
+        duration,
+        expectedError: error.message
+      };
+    }
+  }
+}
+
+function generateReport(results) {
+  console.log('\n📊 TEST SUMMARY');
+  console.log('=' .repeat(50));
+  
+  const totalTests = results.length;
+  const passedTests = results.filter(r => r.success).length;
+  const failedTests = totalTests - passedTests;
+  
+  console.log(`Total tests: ${totalTests}`);
+  console.log(`Passed: ${passedTests}`);
+  console.log(`Failed: ${failedTests}`);
+  console.log(`Success rate: ${(passedTests / totalTests * 100).toFixed(1)}%`);
+  
+  if (failedTests > 0) {
+    console.log('\n❌ FAILED TESTS:');
+    results.forEach((result, index) => {
+      if (!result.success) {
+        console.log(`   ${index + 1}. ${testCases[index].name}: ${result.error}`);
+      }
+    });
+  }
+  
+  console.log('\n⏱️  PERFORMANCE SUMMARY:');
+  const avgDuration = results.reduce((sum, r) => sum + r.duration, 0) / results.length;
+  console.log(`   Average render time: ${avgDuration.toFixed(0)}ms`);
+  
+  const successfulResults = results.filter(r => r.success && r.fileSize);
+  if (successfulResults.length > 0) {
+    const avgFileSize = successfulResults.reduce((sum, r) => sum + r.fileSize, 0) / successfulResults.length;
+    console.log(`   Average file size: ${(avgFileSize / (1024 * 1024)).toFixed(2)}MB`);
+  }
+  
+  return passedTests === totalTests;
+}
+
+// Main test runner
+async function runAllTests() {
+  console.log('🚀 Starting Remotion Render Tests');
+  console.log('=' .repeat(50));
+  
+  // Check if we're in the right directory
+  if (!fs.existsSync('package.json')) {
+    console.error('❌ Error: package.json not found. Please run this test from the project root.');
+    process.exit(1);
+  }
+  
+  // Create output directory if it doesn't exist
+  if (!fs.existsSync('out')) {
+    fs.mkdirSync('out');
+  }
+  
+  const results = [];
+  
+  for (let i = 0; i < testCases.length; i++) {
+    const result = runRenderTest(testCases[i]);
+    results.push(result);
+    
+    // Add a small delay between tests to avoid overwhelming the system
+    if (i < testCases.length - 1) {
+      console.log('   ⏳ Waiting 2s before next test...');
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+  }
+  
+  const allPassed = generateReport(results);
+  
+  console.log('\n🏁 Tests completed!');
+  process.exit(allPassed ? 0 : 1);
+}
+
+// Run tests if this file is executed directly
+if (require.main === module) {
+  runAllTests().catch(error => {
+    console.error('❌ Test runner error:', error);
+    process.exit(1);
+  });
+}
+
+module.exports = {
+  testCases,
+  runRenderTest,
+  runAllTests
+}; 

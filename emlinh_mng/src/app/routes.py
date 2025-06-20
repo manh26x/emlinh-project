@@ -1,0 +1,677 @@
+from flask import render_template, request, jsonify, session, send_file, abort
+from src.app.app import db, csrf
+from src.services.crewai_service import crewai_service
+from src.services.chat_service import get_chat_service
+from src.services.video_service import get_video_service
+from src.services.tts_service import get_tts_service
+from src.app.models import Chat, Idea, Video
+from datetime import datetime
+import threading
+import os
+
+def safe_datetime_to_string(dt_obj):
+    """Safely convert datetime object to string, return as-is if already string"""
+    if dt_obj is None:
+        return None
+    if isinstance(dt_obj, datetime):
+        return dt_obj.isoformat()
+    return str(dt_obj)  # Return as string if not datetime
+
+def register_routes(app):
+    """Register all routes with the Flask app"""
+    
+    @app.route('/')
+    def index():
+        """Home page route"""
+        return render_template('index.html')
+
+    @app.route('/chat')
+    def chat_page():
+        """Chat page route"""
+        return render_template('chat.html')
+
+    @app.route('/videos')
+    def videos_page():
+        """Videos management page"""
+        return render_template('videos.html')
+
+    @app.route('/videos/<int:video_id>')
+    def video_detail_page(video_id):
+        """Video detail page"""
+        video = Video.query.get_or_404(video_id)
+        return render_template('video_detail.html', video=video)
+
+    @app.route('/health')
+    def health_check():
+        """Health check endpoint"""
+        return jsonify({
+            'status': 'healthy',
+            'database': 'connected' if db.engine else 'disconnected'
+        })
+
+    # Video management endpoints
+    @app.route('/api/videos')
+    @csrf.exempt
+    def get_videos():
+        """Lấy danh sách videos"""
+        try:
+            page = request.args.get('page', 1, type=int)
+            per_page = request.args.get('per_page', 20, type=int)
+            status = request.args.get('status')
+            
+            query = Video.query
+            
+            if status:
+                query = query.filter_by(status=status)
+            
+            videos = query.order_by(Video.created_at.desc())\
+                        .paginate(page=page, per_page=per_page, error_out=False)
+            
+            return jsonify({
+                'success': True,
+                'videos': [video.to_dict() for video in videos.items],
+                'pagination': {
+                    'page': page,
+                    'per_page': per_page,
+                    'total': videos.total,
+                    'pages': videos.pages
+                }
+            })
+            
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'message': f'Lỗi server: {str(e)}'
+            }), 500
+
+    @app.route('/api/videos/<int:video_id>')
+    @csrf.exempt
+    def get_video_detail(video_id):
+        """Lấy thông tin chi tiết của một video"""
+        try:
+            video = Video.query.get_or_404(video_id)
+            return jsonify({
+                'success': True,
+                'video': video.to_dict()
+            })
+            
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'message': f'Lỗi server: {str(e)}'
+            }), 500
+
+    @app.route('/api/videos/<int:video_id>/file')
+    def serve_video_file(video_id):
+        """Serve video file trực tiếp"""
+        try:
+            video = Video.query.get_or_404(video_id)
+            
+            # Thử file path gốc
+            if os.path.exists(video.file_path):
+                return send_file(
+                    video.file_path,
+                    mimetype='video/mp4',
+                    as_attachment=False,
+                    download_name=video.file_name
+                )
+            
+            # Thử tìm trong thư mục remotion output nếu file path gốc không tồn tại
+            remotion_output_dir = '/home/mike/Documents/Code/emlinh_projects/emlinh-remotion/out'
+            alternative_path = os.path.join(remotion_output_dir, video.file_name)
+            
+            if os.path.exists(alternative_path):
+                # Cập nhật path trong database để lần sau không cần tìm
+                video.file_path = alternative_path
+                db.session.commit()
+                
+                return send_file(
+                    alternative_path,
+                    mimetype='video/mp4',
+                    as_attachment=False,
+                    download_name=video.file_name
+                )
+            
+            # Nếu không tìm thấy file ở cả hai nơi
+            abort(404, f"Video file not found at {video.file_path} or {alternative_path}")
+            
+        except Exception as e:
+            print(f"Error serving video {video_id}: {str(e)}")
+            abort(500, f"Error serving video: {str(e)}")
+
+    @app.route('/api/videos/<int:video_id>', methods=['DELETE'])
+    @csrf.exempt
+    def delete_video(video_id):
+        """Xóa video"""
+        try:
+            video = Video.query.get_or_404(video_id)
+            
+            # Xóa file nếu tồn tại
+            if os.path.exists(video.file_path):
+                os.remove(video.file_path)
+            
+            # Xóa thumbnail nếu có
+            if video.thumbnail_path and os.path.exists(video.thumbnail_path):
+                os.remove(video.thumbnail_path)
+            
+            db.session.delete(video)
+            db.session.commit()
+            
+            return jsonify({
+                'success': True,
+                'message': 'Video đã được xóa thành công'
+            })
+            
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({
+                'success': False,
+                'message': f'Lỗi server: {str(e)}'
+            }), 500
+
+    # Chat endpoints - Exempt from CSRF
+    @app.route('/api/chat/send', methods=['POST'])
+    @csrf.exempt
+    def send_chat_message():
+        """Gửi tin nhắn chat và nhận phản hồi từ AI"""
+        try:
+            data = request.get_json()
+            user_message = data.get('message', '').strip()
+            session_id = data.get('session_id')
+            message_type = data.get('type', 'conversation')
+            
+            if not user_message:
+                return jsonify({
+                    'success': False,
+                    'message': 'Tin nhắn không được để trống'
+                }), 400
+            
+            chat_service = get_chat_service()
+            result = chat_service.send_message(user_message, session_id, message_type)
+            
+            return jsonify(result)
+            
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'message': f'Lỗi server: {str(e)}'
+            }), 500
+
+    @app.route('/api/chat/history/<session_id>')
+    @csrf.exempt  
+    def get_chat_history(session_id):
+        """Lấy lịch sử chat theo session_id"""
+        try:
+            limit = request.args.get('limit', 50, type=int)
+            
+            chat_service = get_chat_service()
+            history = chat_service.get_chat_history(session_id, limit)
+            
+            return jsonify({
+                'success': True,
+                'history': history,
+                'session_id': session_id
+            })
+            
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'message': f'Lỗi server: {str(e)}'
+            }), 500
+
+    @app.route('/api/chat/search', methods=['POST'])
+    @csrf.exempt
+    def search_conversations():
+        """Tìm kiếm các cuộc hội thoại tương tự"""
+        try:
+            data = request.get_json()
+            query = data.get('query', '').strip()
+            limit = data.get('limit', 5)
+            
+            if not query:
+                return jsonify({
+                    'success': False,
+                    'message': 'Query không được để trống'
+                }), 400
+            
+            chat_service = get_chat_service()
+            results = chat_service.search_similar_conversations(query, limit)
+            
+            return jsonify({
+                'success': True,
+                'results': results,
+                'query': query
+            })
+            
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'message': f'Lỗi server: {str(e)}'
+            }), 500
+
+    # Ideas endpoints
+    @app.route('/api/ideas')
+    @csrf.exempt
+    def get_ideas():
+        """Lấy danh sách ideas"""
+        try:
+            page = request.args.get('page', 1, type=int)
+            per_page = request.args.get('per_page', 20, type=int)
+            status = request.args.get('status')
+            content_type = request.args.get('content_type')
+            
+            query = Idea.query
+            
+            if status:
+                query = query.filter_by(status=status)
+            if content_type:
+                query = query.filter_by(content_type=content_type)
+            
+            ideas = query.order_by(Idea.created_at.desc())\
+                        .paginate(page=page, per_page=per_page, error_out=False)
+            
+            return jsonify({
+                'success': True,
+                'ideas': [idea.to_dict() for idea in ideas.items],
+                'pagination': {
+                    'page': page,
+                    'per_page': per_page,
+                    'total': ideas.total,
+                    'pages': ideas.pages
+                }
+            })
+            
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'message': f'Lỗi server: {str(e)}'
+            }), 500
+
+    @app.route('/api/ideas/<int:idea_id>')
+    @csrf.exempt
+    def get_idea(idea_id):
+        """Lấy thông tin chi tiết của một idea"""
+        try:
+            idea = Idea.query.get_or_404(idea_id)
+            return jsonify({
+                'success': True,
+                'idea': idea.to_dict()
+            })
+            
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'message': f'Lỗi server: {str(e)}'
+            }), 500
+
+    @app.route('/api/ideas/<int:idea_id>', methods=['PUT'])
+    @csrf.exempt
+    def update_idea(idea_id):
+        """Cập nhật thông tin idea"""
+        try:
+            idea = Idea.query.get_or_404(idea_id)
+            data = request.get_json()
+            
+            # Cập nhật các trường được cho phép
+            allowed_fields = ['title', 'description', 'content_type', 'category', 
+                            'status', 'priority', 'target_audience', 'estimated_duration',
+                            'tags', 'scheduled_date', 'notes']
+            
+            for field in allowed_fields:
+                if field in data:
+                    setattr(idea, field, data[field])
+            
+            db.session.commit()
+            
+            return jsonify({
+                'success': True,
+                'idea': idea.to_dict()
+            })
+            
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({
+                'success': False,
+                'message': f'Lỗi server: {str(e)}'
+            }), 500
+
+    # CrewAI endpoints
+    @app.route('/api/crewai/content', methods=['POST'])
+    @csrf.exempt
+    def create_content():
+        """Tạo nội dung sử dụng CrewAI"""
+        try:
+            data = request.get_json()
+            topic = data.get('topic', '').strip()
+            
+            if not topic:
+                return jsonify({
+                    'success': False,
+                    'message': 'Vui lòng cung cấp chủ đề để tạo nội dung'
+                }), 400
+            
+            result = crewai_service.run_content_creation_crew(topic)
+            return jsonify(result)
+            
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'message': f'Lỗi server: {str(e)}'
+            }), 500
+
+    @app.route('/api/crewai/analyze', methods=['POST'])
+    @csrf.exempt
+    def analyze_data():
+        """Phân tích dữ liệu sử dụng CrewAI"""
+        try:
+            data = request.get_json()
+            analysis_data = data.get('data', '').strip()
+            analysis_type = data.get('type', 'general')
+            
+            if not analysis_data:
+                return jsonify({
+                    'success': False,
+                    'message': 'Vui lòng cung cấp dữ liệu để phân tích'
+                }), 400
+            
+            result = crewai_service.simple_analysis_crew(analysis_data, analysis_type)
+            return jsonify(result)
+            
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'message': f'Lỗi server: {str(e)}'
+            }), 500
+
+    # Video Production page
+    @app.route('/video-production')
+    def video_production_page():
+        """Video Production page route"""
+        return render_template('video_production.html')
+
+    # Video/Remotion routes
+    @app.route('/api/video/compositions')
+    @csrf.exempt
+    def get_video_compositions():
+        """Lấy danh sách video compositions"""
+        try:
+            video_service = get_video_service()
+            compositions = video_service.get_compositions()
+            
+            return jsonify({
+                'success': True,
+                'compositions': compositions
+            })
+            
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'message': f'Lỗi server: {str(e)}'
+            }), 500
+
+    @app.route('/api/video/audio-files')
+    @csrf.exempt
+    def get_audio_files():
+        """Lấy danh sách audio files"""
+        try:
+            video_service = get_video_service()
+            audio_files = video_service.get_available_audio_files()
+            
+            return jsonify({
+                'success': True,
+                'audio_files': audio_files
+            })
+            
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'message': f'Lỗi server: {str(e)}'
+            }), 500
+
+    @app.route('/api/video/render', methods=['POST'])
+    @csrf.exempt
+    def render_video():
+        """Render video sử dụng Remotion"""
+        try:
+            data = request.get_json()
+            composition_id = data.get('composition_id')
+            props = data.get('props', {})
+            output_name = data.get('output_name')
+            
+            if not composition_id:
+                return jsonify({
+                    'success': False,
+                    'message': 'Vui lòng cung cấp composition_id'
+                }), 400
+            
+            video_service = get_video_service()
+            job_id = video_service.render_video(composition_id, props, output_name)
+            
+            return jsonify({
+                'success': True,
+                'job_id': job_id,
+                'message': 'Bắt đầu render video thành công'
+            })
+            
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'message': f'Lỗi server: {str(e)}'
+            }), 500
+
+    @app.route('/api/video/status/<job_id>')
+    @csrf.exempt
+    def get_render_status(job_id):
+        """Lấy trạng thái render video"""
+        try:
+            video_service = get_video_service()
+            status = video_service.get_render_status(job_id)
+            
+            if status is None:
+                return jsonify({
+                    'success': False,
+                    'message': 'Không tìm thấy render job'
+                }), 404
+            
+            # Convert datetime objects to strings for JSON serialization
+            if 'start_time' in status:
+                status['start_time'] = safe_datetime_to_string(status['start_time'])
+            if 'end_time' in status:
+                status['end_time'] = safe_datetime_to_string(status['end_time'])
+            
+            return jsonify({
+                'success': True,
+                'status': status
+            })
+            
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'message': f'Lỗi server: {str(e)}'
+            }), 500
+
+    @app.route('/api/video/jobs')
+    @csrf.exempt
+    def get_all_render_jobs():
+        """Lấy tất cả render jobs"""
+        try:
+            video_service = get_video_service()
+            jobs = video_service.get_all_render_jobs()
+            
+            # Convert datetime objects to strings for JSON serialization
+            for job_id, job_data in jobs.items():
+                if 'start_time' in job_data:
+                    job_data['start_time'] = safe_datetime_to_string(job_data['start_time'])
+                if 'end_time' in job_data:
+                    job_data['end_time'] = safe_datetime_to_string(job_data['end_time'])
+            
+            return jsonify({
+                'success': True,
+                'jobs': jobs
+            })
+            
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'message': f'Lỗi server: {str(e)}'
+            }), 500
+
+    # Text-to-Speech routes
+    @app.route('/api/tts/generate', methods=['POST'])
+    @csrf.exempt
+    def generate_tts():
+        """Tạo speech từ text"""
+        try:
+            data = request.get_json()
+            text = data.get('text', '').strip()
+            filename = data.get('filename', '').strip()
+            
+            if not text:
+                return jsonify({
+                    'success': False,
+                    'message': 'Vui lòng nhập text để chuyển đổi'
+                }), 400
+            
+            if len(text) > 4000:  # OpenAI TTS limit
+                return jsonify({
+                    'success': False,
+                    'message': 'Text quá dài (tối đa 4000 ký tự)'
+                }), 400
+            
+            # Tạo job ID trước
+            tts_service = get_tts_service()
+            job_id = f"tts_{int(datetime.now().timestamp())}"
+            
+            # Chạy TTS trong thread riêng
+            def run_tts():
+                tts_service.generate_speech(text, filename, job_id)
+            
+            thread = threading.Thread(target=run_tts)
+            thread.daemon = True
+            thread.start()
+            
+            return jsonify({
+                'success': True,
+                'job_id': job_id,
+                'message': 'Bắt đầu tạo speech thành công'
+            })
+            
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'message': f'Lỗi server: {str(e)}'
+            }), 500
+
+    @app.route('/api/tts/status/<job_id>')
+    @csrf.exempt
+    def get_tts_status(job_id):
+        """Lấy trạng thái TTS job"""
+        try:
+            tts_service = get_tts_service()
+            status = tts_service.get_tts_status(job_id)
+            
+            if status is None:
+                return jsonify({
+                    'success': False,
+                    'message': 'Không tìm thấy TTS job'
+                }), 404
+            
+            # Convert datetime objects to strings for JSON serialization
+            if 'start_time' in status:
+                status['start_time'] = safe_datetime_to_string(status['start_time'])
+            if 'end_time' in status:
+                status['end_time'] = safe_datetime_to_string(status['end_time'])
+            
+            return jsonify({
+                'success': True,
+                'status': status
+            })
+            
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'message': f'Lỗi server: {str(e)}'
+            }), 500
+
+    @app.route('/api/tts/jobs')
+    @csrf.exempt
+    def get_all_tts_jobs():
+        """Lấy tất cả TTS jobs"""
+        try:
+            tts_service = get_tts_service()
+            jobs = tts_service.get_all_tts_jobs()
+            
+            # Convert datetime objects to strings for JSON serialization
+            for job_id, job_data in jobs.items():
+                if 'start_time' in job_data:
+                    job_data['start_time'] = safe_datetime_to_string(job_data['start_time'])
+                if 'end_time' in job_data:
+                    job_data['end_time'] = safe_datetime_to_string(job_data['end_time'])
+            
+            return jsonify({
+                'success': True,
+                'jobs': jobs
+            })
+            
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'message': f'Lỗi server: {str(e)}'
+            }), 500
+
+    @app.route('/api/tts/voices')
+    @csrf.exempt
+    def get_tts_voices():
+        """Lấy danh sách voices có sẵn"""
+        try:
+            tts_service = get_tts_service()
+            voices = tts_service.get_available_voices()
+            
+            return jsonify({
+                'success': True,
+                'voices': voices
+            })
+            
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'message': f'Lỗi server: {str(e)}'
+            }), 500
+
+    @app.route('/api/chat/create-video', methods=['POST'])
+    @csrf.exempt
+    def create_video_from_chat():
+        """API để tạo video trực tiếp từ chat interface"""
+        try:
+            data = request.get_json()
+            topic = data.get('topic')
+            duration = data.get('duration', 15)
+            composition = data.get('composition', 'Scene-Landscape')
+            background = data.get('background', 'office')
+            voice = data.get('voice', 'nova')
+            
+            if not topic:
+                return jsonify({
+                    'success': False,
+                    'message': 'Vui lòng cung cấp chủ đề video'
+                }), 400
+            
+            # Import và sử dụng VideoProductionTool
+            from ..services.video_production_tool import VideoProductionTool
+            
+            tool = VideoProductionTool()
+            result = tool._run(topic, duration, composition, background, voice)
+            
+            return jsonify({
+                'success': True,
+                'result': result,
+                'message': 'Video creation initiated'
+            })
+            
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'message': f'Lỗi server: {str(e)}'
+            }), 500
+
+    # Add more routes here as needed

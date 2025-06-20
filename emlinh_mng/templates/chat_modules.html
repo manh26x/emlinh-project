@@ -1,0 +1,33 @@
+<!-- Chat Modules - Modular JavaScript Architecture -->
+
+<!-- Core Modules -->
+<script src="{{ url_for('static', filename='js/core/SessionManager.js') }}"></script>
+<script src="{{ url_for('static', filename='js/core/NotificationManager.js') }}"></script>
+<script src="{{ url_for('static', filename='js/core/UIManager.js') }}"></script>
+<script src="{{ url_for('static', filename='js/core/ChatCore.js') }}"></script>
+
+<!-- Feature Modules -->
+<script src="{{ url_for('static', filename='js/modules/VideoManager.js') }}"></script>
+<script src="{{ url_for('static', filename='js/modules/IdeaManager.js') }}"></script>
+
+<!-- Utilities -->
+<script src="{{ url_for('static', filename='js/utils/ChatUtils.js') }}"></script>
+
+<!-- Main Chat Manager -->
+<script src="{{ url_for('static', filename='js/ChatManager.js') }}"></script>
+
+<!-- Initialize when all modules are loaded -->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // Initialize chat manager globally
+    window.chatManager = new ChatManager();
+    
+    // Expose managers globally for debugging and compatibility
+    window.videoManager = window.chatManager.videoManager;
+    window.ideaManager = window.chatManager.ideaManager;
+    window.sessionManager = window.chatManager.sessionManager;
+    window.notificationManager = window.chatManager.notificationManager;
+    
+    console.log('✅ Modular chat application initialized successfully');
+});
+</script> 
