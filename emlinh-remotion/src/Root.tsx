@@ -21,7 +21,7 @@ import { Scene } from "./Scene";
 export const myCompSchema = z.object({
   durationInSeconds: z.number().min(1).default(10),
   backgroundScene: z.enum(["office", "abstract", "none"]).default("none"),
-  audioFileName: z.enum(["batnhatamkinh.wav", "None", "audio2.wav", "audio3.wav"]).default("None"), // Enum cho lựa chọn audio
+  audioFileName: z.string().default("None"), // Thay đổi từ enum sang string để cho phép tên file động
   cameraFov: z.number().default(30),
   cameraPosition: z.tuple([z.number(), z.number(), z.number()]).default([0, 0.7, 4.5]),
 });

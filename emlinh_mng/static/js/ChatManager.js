@@ -10,12 +10,18 @@ class ChatManager {
     
     initializeManagers() {
         // Initialize managers in correct order (dependencies first)
+        console.log('🔧 Initializing managers...');
+        console.log('VideoManager type:', typeof VideoManager);
+        console.log('VideoManager:', VideoManager);
+        
         this.sessionManager = new SessionManager();
         this.notificationManager = new NotificationManager();
         this.uiManager = new UIManager();
         this.chatCore = new ChatCore(this.sessionManager, this.uiManager, this.notificationManager);
         this.videoManager = new VideoManager(this.notificationManager, this.uiManager);
         this.ideaManager = new IdeaManager();
+        
+        console.log('✅ All managers initialized');
     }
     
     bindGlobalEvents() {

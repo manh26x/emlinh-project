@@ -1,43 +1,42 @@
 {% extends "base.html" %}
 
-{% block title %}AI Chat - Content Manager{% endblock %}
+{% block title %}Chat AI - Emlinh AI Assistant{% endblock %}
 
 {% block content %}
 <div class="container-fluid h-100">
     <div class="row h-100">
         <!-- Chat Area -->
         <div class="col-md-8 d-flex flex-column h-100">
-            <div class="card h-100">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">💬 Chat với AI Assistant</h5>
-                    <div class="btn-group" role="group">
-                        <input type="radio" class="btn-check" name="chatType" id="conversation" value="conversation" checked>
-                        <label class="btn btn-outline-primary btn-sm" for="conversation">Trò chuyện</label>
-                        
-                        <input type="radio" class="btn-check" name="chatType" id="brainstorm" value="brainstorm">
-                        <label class="btn btn-outline-success btn-sm" for="brainstorm">Brainstorm</label>
-                        
-                        <input type="radio" class="btn-check" name="chatType" id="planning" value="planning">
-                        <label class="btn btn-outline-warning btn-sm" for="planning">Lập kế hoạch</label>
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-header bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
+                    <div class="d-flex align-items-center">
+                        <div class="me-3">
+                            <i class="fas fa-robot text-2xl"></i>
+                        </div>
+                        <div>
+                            <h5 class="mb-0 fw-bold">💬 Chat với AI Assistant</h5>
+                            <small class="opacity-75">Trò chuyện và tạo video thông minh</small>
+                        </div>
                     </div>
                 </div>
                 
                 <div class="card-body d-flex flex-column p-0">
                     <!-- Messages Container -->
-                    <div id="messagesContainer" class="flex-grow-1 overflow-auto p-3" style="min-height: 400px;">
+                    <div id="messagesContainer" class="flex-grow-1 overflow-auto p-3" style="min-height: 400px; background: linear-gradient(to bottom, #f8fafc, #ffffff);">
                         <div id="chatMessages">
                             <div class="message ai-message mb-3">
                                 <div class="d-flex">
-                                    <div class="avatar bg-primary text-white rounded-circle me-2 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                    <div class="avatar bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-circle me-3 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
                                         🤖
                                     </div>
                                     <div class="message-content">
-                                        <div class="bg-light rounded p-3">
-                                            Xin chào! Tôi là AI Assistant của bạn. Tôi có thể giúp bạn:
+                                        <div class="bg-white rounded-xl p-3 shadow-sm border">
+                                            <p class="mb-2">Xin chào! Tôi là AI Assistant của bạn. 🎉</p>
+                                            <p class="mb-2">Tôi có thể giúp bạn:</p>
                                             <ul class="mb-0 mt-2">
-                                                <li><strong>Trò chuyện</strong>: Thảo luận ý tưởng và nhận tư vấn</li>
-                                                <li><strong>Brainstorm</strong>: Tạo ra nhiều ý tưởng sáng tạo</li>
-                                                <li><strong>Lập kế hoạch</strong>: Xây dựng kế hoạch chi tiết cho content</li>
+                                                <li><strong>💬 Trò chuyện</strong>: Thảo luận bất kỳ chủ đề nào</li>
+                                                <li><strong>🎬 Tạo video</strong>: Sản xuất video với AI avatar</li>
+                                                <li><strong>🎯 Tư vấn</strong>: Đưa ra lời khuyên và hướng dẫn</li>
                                             </ul>
                                         </div>
                                         <small class="text-muted">Vừa xong</small>
@@ -50,10 +49,10 @@
                     <!-- Typing Indicator -->
                     <div id="typingIndicator" class="px-3 pb-2" style="display: none;">
                         <div class="d-flex">
-                            <div class="avatar bg-primary text-white rounded-circle me-2 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                            <div class="avatar bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-circle me-3 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
                                 🤖
                             </div>
-                            <div class="bg-light rounded p-2">
+                            <div class="bg-light rounded-xl p-3 shadow-sm">
                                 <div class="typing-dots">
                                     <span></span>
                                     <span></span>
@@ -64,12 +63,13 @@
                     </div>
                     
                     <!-- Message Input -->
-                    <div class="card-footer">
+                    <div class="card-footer bg-light border-0">
                         <form id="chatForm" class="d-flex">
-                            <input type="text" id="messageInput" class="form-control me-2" 
-                                   placeholder="Nhập tin nhắn của bạn..." 
-                                   autocomplete="off" maxlength="1000">
-                            <button type="submit" id="sendButton" class="btn btn-primary">
+                            <input type="text" id="messageInput" class="form-control me-2 rounded-pill border-0 shadow-sm" 
+                                   placeholder="Nhập tin nhắn của bạn... (Ví dụ: Tạo video về AI)" 
+                                   autocomplete="off" maxlength="1000" style="background: white;">
+                            <button type="submit" id="sendButton" class="btn btn-primary rounded-circle d-flex align-items-center justify-content-center" 
+                                    style="width: 45px; height: 45px; background: linear-gradient(45deg, #6366f1, #8b5cf6);">
                                 <i class="fas fa-paper-plane"></i>
                             </button>
                         </form>
@@ -81,63 +81,95 @@
         <!-- Sidebar -->
         <div class="col-md-4 d-flex flex-column">
             <!-- Session Info -->
-            <div class="card mb-3">
-                <div class="card-header">
-                    <h6 class="mb-0">📝 Thông tin phiên</h6>
+            <div class="card mb-3 border-0 shadow-sm">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0 text-gray-700">📝 Thông tin phiên</h6>
                 </div>
                 <div class="card-body">
-                    <p class="mb-1"><strong>Session ID:</strong></p>
-                    <code id="sessionId" class="small">Đang tạo...</code>
-                    <button id="newSessionBtn" class="btn btn-outline-secondary btn-sm mt-2 w-100">
+                    <p class="mb-1 text-sm text-gray-600"><strong>Session ID:</strong></p>
+                    <code id="sessionId" class="small text-indigo-600">Đang tạo...</code>
+                    <button id="newSessionBtn" class="btn btn-outline-primary btn-sm mt-2 w-100 rounded-pill">
+                        <i class="fas fa-plus me-1"></i>
                         Bắt đầu phiên mới
                     </button>
                 </div>
             </div>
             
             <!-- Quick Actions -->
-            <div class="card mb-3">
-                <div class="card-header">
-                    <h6 class="mb-0">⚡ Hành động nhanh</h6>
+            <div class="card mb-3 border-0 shadow-sm">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0 text-gray-700">⚡ Gợi ý nhanh</h6>
                 </div>
                 <div class="card-body">
                     <div class="d-grid gap-2">
-                        <button class="btn btn-outline-success btn-sm quick-prompt" 
-                                data-prompt="Tôi muốn tạo video về [chủ đề]. Hãy giúp tôi brainstorm ý tưởng."
-                                data-type="brainstorm">
-                            💡 Ý tưởng video
+                        <button class="btn btn-outline-success btn-sm quick-prompt rounded-pill" 
+                                data-prompt="Tôi muốn tạo video giới thiệu về AI. Hãy giúp tôi!"
+                                data-type="conversation">
+                            🎬 Tạo video giới thiệu
                         </button>
-                        <button class="btn btn-outline-info btn-sm quick-prompt" 
-                                data-prompt="Tôi cần lên kế hoạch content cho [platform]. Hãy giúp tôi."
-                                data-type="planning">
-                            📅 Kế hoạch content
+                        <button class="btn btn-outline-info btn-sm quick-prompt rounded-pill" 
+                                data-prompt="Hãy giải thích về trí tuệ nhân tạo một cách đơn giản."
+                                data-type="conversation">
+                            🤖 Giải thích về AI
                         </button>
-                        <button class="btn btn-outline-warning btn-sm quick-prompt" 
-                                data-prompt="Tôi muốn viết bài post về [chủ đề]. Hãy đưa ra gợi ý."
-                                data-type="brainstorm">
-                            ✍️ Ý tưởng bài viết
+                        <button class="btn btn-outline-warning btn-sm quick-prompt rounded-pill" 
+                                data-prompt="Tôi muốn tạo video hướng dẫn sử dụng hệ thống này."
+                                data-type="conversation">
+                            📚 Video hướng dẫn
                         </button>
-                        <button class="btn btn-outline-danger btn-sm" id="createVideoBtn">
+                        <button class="btn btn-outline-primary btn-sm" id="createVideoBtn" style="background: linear-gradient(45deg, #6366f1, #8b5cf6); color: white; border: none;">
                             🎬 Tạo video AI
                         </button>
-                        <button class="btn btn-outline-info btn-sm" id="reprocessBtn" onclick="window.reprocessMessages()">
-                            🔄 Hiển thị video
-                        </button>
-                        <button class="btn btn-outline-secondary btn-sm" onclick="window.addTestVideoMessage()">
-                            🧪 Test video msg
+                        <button class="btn btn-outline-secondary btn-sm rounded-pill" id="reprocessBtn" onclick="window.reprocessMessages()">
+                            🔄 Làm mới video
                         </button>
                     </div>
                 </div>
             </div>
             
-            <!-- Recent Ideas -->
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h6 class="mb-0">💭 Ý tưởng gần đây</h6>
-                    <a href="/ideas" class="btn btn-outline-primary btn-sm">Xem tất cả</a>
+            <!-- AI Features -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0 text-gray-700">🌟 Tính năng AI</h6>
                 </div>
                 <div class="card-body">
-                    <div id="recentIdeas">
-                        <p class="text-muted small">Chưa có ý tưởng nào được tạo</p>
+                    <div class="space-y-3">
+                        <div class="d-flex align-items-center">
+                            <div class="bg-emerald-100 rounded-circle p-2 me-3">
+                                <i class="fas fa-comments text-emerald-600"></i>
+                            </div>
+                            <div>
+                                <div class="fw-medium text-sm">Chat thông minh</div>
+                                <div class="text-xs text-gray-500">Trò chuyện tự nhiên</div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex align-items-center">
+                            <div class="bg-purple-100 rounded-circle p-2 me-3">
+                                <i class="fas fa-video text-purple-600"></i>
+                            </div>
+                            <div>
+                                <div class="fw-medium text-sm">Tạo video AI</div>
+                                <div class="text-xs text-gray-500">Avatar + lip-sync</div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex align-items-center">
+                            <div class="bg-blue-100 rounded-circle p-2 me-3">
+                                <i class="fas fa-microphone text-blue-600"></i>
+                            </div>
+                            <div>
+                                <div class="fw-medium text-sm">Text-to-Speech</div>
+                                <div class="text-xs text-gray-500">Giọng nói tự nhiên</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-3 p-3 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg">
+                        <div class="text-xs text-gray-600 text-center">
+                            <i class="fas fa-magic text-indigo-600 me-1"></i>
+                            Hỗ trợ bởi AI tiên tiến
+                        </div>
                     </div>
                 </div>
             </div>
@@ -163,6 +195,7 @@
 }
 
 .user-message .bg-primary {
+    background: linear-gradient(45deg, #6366f1, #8b5cf6) !important;
     color: white !important;
 }
 
@@ -180,7 +213,7 @@
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background-color: #6c757d;
+    background-color: #6366f1;
     animation: typing 1.4s infinite ease-in-out;
 }
 
@@ -198,21 +231,46 @@
 }
 
 #messagesContainer {
-    background: linear-gradient(to bottom, #f8f9fa, #ffffff);
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
 }
 
-.message-timestamp {
+#messagesContainer::-webkit-scrollbar {
+    width: 6px;
+}
+
+#messagesContainer::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+#messagesContainer::-webkit-scrollbar-thumb {
+    background-color: #cbd5e1;
+    border-radius: 3px;
+}
+
+#messagesContainer::-webkit-scrollbar-thumb:hover {
+    background-color: #94a3b8;
+}
+
+.card {
+    backdrop-filter: blur(10px);
+}
+
+.space-y-3 > * + * {
+    margin-top: 12px;
+}
+
+.text-xs {
     font-size: 0.75rem;
-    color: #6c757d;
 }
 
-.idea-badge {
-    font-size: 0.7rem;
-    padding: 2px 6px;
+.text-sm {
+    font-size: 0.875rem;
 }
 </style>
 {% endblock %}
 
 {% block extra_js %}
+<!-- Chat modules will be loaded here -->
 {% include 'chat_modules.html' %}
 {% endblock %}

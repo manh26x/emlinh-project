@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Emlinh Management System{% endblock %}</title>
+    <title>{% block title %}Emlinh AI Assistant{% endblock %}</title>
     
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -11,18 +11,66 @@
     <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
     
     {% block extra_css %}{% endblock %}
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background-attachment: fixed;
+        }
+        
+        .navbar {
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.95) !important;
+        }
+        
+        .navbar-brand {
+            font-weight: 700;
+        }
+        
+        .nav-link {
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        
+        .nav-link:hover {
+            color: #6366f1 !important;
+            transform: translateY(-1px);
+        }
+        
+        .gradient-brand {
+            background: linear-gradient(45deg, #6366f1, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        main {
+            min-height: calc(100vh - 140px);
+        }
+        
+        footer {
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.9) !important;
+        }
+    </style>
 </head>
 <body class="d-flex flex-column min-vh-100">
     <!-- Navigation Header -->
-    <nav class="navbar navbar-expand-lg navbar-light bg-light border-bottom">
+    <nav class="navbar navbar-expand-lg navbar-light bg-light border-bottom shadow-sm">
         <div class="container-fluid">
             <a class="navbar-brand d-flex align-items-center" href="/">
-                <i class="fas fa-rocket text-primary me-2"></i>
-                <strong>Emlinh Management</strong>
+                <div class="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-lg p-2 me-2 d-flex align-items-center justify-content-center" style="background: linear-gradient(45deg, #6366f1, #8b5cf6);">
+                    <i class="fas fa-robot text-white"></i>
+                </div>
+                <span class="gradient-brand">Emlinh AI Assistant</span>
             </a>
             
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -42,25 +90,20 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/videos">
-                            <i class="fas fa-film me-1"></i>Video Library
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/ideas">
-                            <i class="fas fa-lightbulb me-1"></i>Ý tưởng
-                        </a>
-                    </li>
-                    <li class="nav-item">
                         <a class="nav-link" href="/video-production">
-                            <i class="fas fa-video me-1"></i>Sản xuất Video
+                            <i class="fas fa-video me-1"></i>Video Producer
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/videos">
+                            <i class="fas fa-film me-1"></i>Thư viện Video
                         </a>
                     </li>
                 </ul>
                 
                 <div class="d-flex">
                     {% block nav_items %}
-                    <button id="health-check-btn" class="btn btn-outline-success btn-sm">
+                    <button id="health-check-btn" class="btn btn-outline-success btn-sm rounded-pill">
                         <i class="fas fa-heartbeat me-1"></i>
                         Health Check
                     </button>
@@ -76,14 +119,50 @@
     </main>
 
     <!-- Footer -->
-    <footer class="bg-light border-top py-3 mt-auto">
+    <footer class="bg-light border-top py-4 mt-auto">
         <div class="container text-center">
-            <p class="text-muted mb-0">&copy; 2025 Emlinh Management System. Made with ❤️ using Flask & CrewAI</p>
+            <div class="row">
+                <div class="col-md-12">
+                    <p class="text-muted mb-2">
+                        <i class="fas fa-robot text-primary me-2"></i>
+                        <strong>Emlinh AI Assistant</strong>
+                    </p>
+                    <p class="text-muted mb-0 small">
+                        Trò chuyện thông minh • Tạo video tự động • Đơn giản và hiệu quả
+                    </p>
+                    <p class="text-muted mb-0" style="font-size: 0.75rem;">
+                        &copy; 2025 Emlinh AI. Made with ❤️ using Flask & AI
+                    </p>
+                </div>
+            </div>
         </div>
     </footer>
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Health Check Script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const healthBtn = document.getElementById('health-check-btn');
+            if (healthBtn) {
+                healthBtn.addEventListener('click', async function() {
+                    try {
+                        const response = await fetch('/health');
+                        const data = await response.json();
+                        
+                        if (data.status === 'healthy') {
+                            alert('✅ Hệ thống hoạt động bình thường\nDatabase: ' + data.database);
+                        } else {
+                            alert('❌ Hệ thống có vấn đề');
+                        }
+                    } catch (error) {
+                        alert('❌ Không thể kết nối với server');
+                    }
+                });
+            }
+        });
+    </script>
     
     <!-- Custom JavaScript -->
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>

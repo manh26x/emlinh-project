@@ -1,6 +1,6 @@
 from flask import render_template, request, jsonify, session, send_file, abort
 from src.app.app import db, csrf
-from src.services.crewai_service import crewai_service
+from src.services.flow_service import flow_service
 from src.services.chat_service import get_chat_service
 from src.services.video_service import get_video_service
 from src.services.tts_service import get_tts_service
@@ -173,7 +173,7 @@ def register_routes(app):
     @app.route('/api/chat/send', methods=['POST'])
     @csrf.exempt
     def send_chat_message():
-        """Gửi tin nhắn chat và nhận phản hồi từ AI"""
+        """Gửi tin nhắn chat và nhận phản hồi từ AI sử dụng Flow"""
         try:
             data = request.get_json()
             user_message = data.get('message', '').strip()
@@ -186,12 +186,46 @@ def register_routes(app):
                     'message': 'Tin nhắn không được để trống'
                 }), 400
             
-            chat_service = get_chat_service()
-            result = chat_service.send_message(user_message, session_id, message_type)
+            # Sử dụng FlowService thay vì ChatService
+            import asyncio
             
-            return jsonify(result)
+            # Tạo event loop nếu chưa có
+            try:
+                loop = asyncio.get_event_loop()
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+            
+            # Chạy async method
+            ai_response = loop.run_until_complete(
+                flow_service.process_message_async(user_message, session_id)
+            )
+            
+            # Lưu chat vào database
+            try:
+                chat = Chat(
+                    user_message=user_message,
+                    ai_response=ai_response,
+                    session_id=session_id,
+                    message_type=message_type,
+                    created_at=datetime.utcnow()
+                )
+                db.session.add(chat)
+                db.session.commit()
+            except Exception as db_error:
+                print(f"⚠️ Database save error: {str(db_error)}")
+                db.session.rollback()
+            
+            return jsonify({
+                'success': True,
+                'ai_response': ai_response,
+                'timestamp': datetime.utcnow().isoformat(),
+                'session_id': session_id,
+                'message_type': message_type
+            })
             
         except Exception as e:
+            print(f"❌ Chat error: {str(e)}")
             return jsonify({
                 'success': False,
                 'message': f'Lỗi server: {str(e)}'
@@ -249,139 +283,8 @@ def register_routes(app):
                 'message': f'Lỗi server: {str(e)}'
             }), 500
 
-    # Ideas endpoints
-    @app.route('/api/ideas')
-    @csrf.exempt
-    def get_ideas():
-        """Lấy danh sách ideas"""
-        try:
-            page = request.args.get('page', 1, type=int)
-            per_page = request.args.get('per_page', 20, type=int)
-            status = request.args.get('status')
-            content_type = request.args.get('content_type')
-            
-            query = Idea.query
-            
-            if status:
-                query = query.filter_by(status=status)
-            if content_type:
-                query = query.filter_by(content_type=content_type)
-            
-            ideas = query.order_by(Idea.created_at.desc())\
-                        .paginate(page=page, per_page=per_page, error_out=False)
-            
-            return jsonify({
-                'success': True,
-                'ideas': [idea.to_dict() for idea in ideas.items],
-                'pagination': {
-                    'page': page,
-                    'per_page': per_page,
-                    'total': ideas.total,
-                    'pages': ideas.pages
-                }
-            })
-            
-        except Exception as e:
-            return jsonify({
-                'success': False,
-                'message': f'Lỗi server: {str(e)}'
-            }), 500
-
-    @app.route('/api/ideas/<int:idea_id>')
-    @csrf.exempt
-    def get_idea(idea_id):
-        """Lấy thông tin chi tiết của một idea"""
-        try:
-            idea = Idea.query.get_or_404(idea_id)
-            return jsonify({
-                'success': True,
-                'idea': idea.to_dict()
-            })
-            
-        except Exception as e:
-            return jsonify({
-                'success': False,
-                'message': f'Lỗi server: {str(e)}'
-            }), 500
-
-    @app.route('/api/ideas/<int:idea_id>', methods=['PUT'])
-    @csrf.exempt
-    def update_idea(idea_id):
-        """Cập nhật thông tin idea"""
-        try:
-            idea = Idea.query.get_or_404(idea_id)
-            data = request.get_json()
-            
-            # Cập nhật các trường được cho phép
-            allowed_fields = ['title', 'description', 'content_type', 'category', 
-                            'status', 'priority', 'target_audience', 'estimated_duration',
-                            'tags', 'scheduled_date', 'notes']
-            
-            for field in allowed_fields:
-                if field in data:
-                    setattr(idea, field, data[field])
-            
-            db.session.commit()
-            
-            return jsonify({
-                'success': True,
-                'idea': idea.to_dict()
-            })
-            
-        except Exception as e:
-            db.session.rollback()
-            return jsonify({
-                'success': False,
-                'message': f'Lỗi server: {str(e)}'
-            }), 500
-
-    # CrewAI endpoints
-    @app.route('/api/crewai/content', methods=['POST'])
-    @csrf.exempt
-    def create_content():
-        """Tạo nội dung sử dụng CrewAI"""
-        try:
-            data = request.get_json()
-            topic = data.get('topic', '').strip()
-            
-            if not topic:
-                return jsonify({
-                    'success': False,
-                    'message': 'Vui lòng cung cấp chủ đề để tạo nội dung'
-                }), 400
-            
-            result = crewai_service.run_content_creation_crew(topic)
-            return jsonify(result)
-            
-        except Exception as e:
-            return jsonify({
-                'success': False,
-                'message': f'Lỗi server: {str(e)}'
-            }), 500
-
-    @app.route('/api/crewai/analyze', methods=['POST'])
-    @csrf.exempt
-    def analyze_data():
-        """Phân tích dữ liệu sử dụng CrewAI"""
-        try:
-            data = request.get_json()
-            analysis_data = data.get('data', '').strip()
-            analysis_type = data.get('type', 'general')
-            
-            if not analysis_data:
-                return jsonify({
-                    'success': False,
-                    'message': 'Vui lòng cung cấp dữ liệu để phân tích'
-                }), 400
-            
-            result = crewai_service.simple_analysis_crew(analysis_data, analysis_type)
-            return jsonify(result)
-            
-        except Exception as e:
-            return jsonify({
-                'success': False,
-                'message': f'Lỗi server: {str(e)}'
-            }), 500
+    # Note: Ideas endpoints have been simplified - keeping database but removing frontend routes
+    # Ideas are still stored in database via chat service but no longer have dedicated management UI
 
     # Video Production page
     @app.route('/video-production')

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Emlinh Management System</title>
+    <title>Emlinh AI Assistant</title>
     
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -30,20 +30,25 @@
             }
         }
     </script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
-<body class="font-inter bg-gray-50 min-h-screen">
+<body class="font-inter bg-gradient-to-br from-indigo-50 via-white to-purple-50 min-h-screen">
     <!-- Navigation Header -->
-    <nav class="bg-white shadow-sm border-b">
+    <nav class="bg-white/80 backdrop-blur-md shadow-sm border-b border-white/20 sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center h-16">
                 <div class="flex items-center">
-                    <i class="fas fa-rocket text-blue-600 text-2xl mr-3"></i>
-                    <h1 class="text-xl font-bold text-gray-900">Emlinh Management</h1>
+                    <div class="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-lg p-2 mr-3">
+                        <i class="fas fa-robot text-white text-xl"></i>
+                    </div>
+                    <h1 class="text-xl font-bold text-gray-900">Emlinh AI Assistant</h1>
                 </div>
                 <div class="flex items-center space-x-4">
-                    <button id="health-check-btn" class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium hover:bg-green-200 transition-colors">
-                        <i class="fas fa-heartbeat mr-1"></i>
-                        Health Check
+                    <button id="health-check-btn" class="bg-emerald-50 text-emerald-700 px-4 py-2 rounded-full text-sm font-medium hover:bg-emerald-100 transition-all duration-200 flex items-center space-x-2">
+                        <i class="fas fa-heartbeat"></i>
+                        <span>Health Check</span>
                     </button>
                 </div>
             </div>
@@ -51,141 +56,143 @@
     </nav>
 
     <!-- Main Content -->
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <!-- Hero Section -->
-        <div class="text-center mb-12 animate-fade-in">
-            <div class="gradient-bg text-white rounded-2xl p-8 mb-8">
-                <h2 class="text-4xl font-bold mb-4">🎯 Chào mừng đến với Emlinh System</h2>
-                <p class="text-xl opacity-90">Hệ thống quản lý thông minh với AI CrewAI tích hợp</p>
-            </div>
-            
-            <!-- Status Cards -->
-            <div class="grid md:grid-cols-3 gap-6 mb-8">
-                <div class="bg-white rounded-xl p-6 shadow-sm border animate-fade-in">
-                    <div class="text-green-500 text-3xl mb-2">
-                        <i class="fas fa-server"></i>
+        <div class="text-center mb-16 animate-fade-in">
+            <div class="relative">
+                <div class="absolute inset-0 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 rounded-3xl blur-lg opacity-20"></div>
+                <div class="relative bg-white/80 backdrop-blur-sm rounded-3xl p-12 border border-white/20 shadow-2xl">
+                    <div class="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl mb-6">
+                        <i class="fas fa-robot text-white text-3xl"></i>
                     </div>
-                    <h3 class="font-semibold text-gray-900">Flask Server</h3>
-                    <p class="text-green-600 text-sm">✅ Đang chạy</p>
-                </div>
-                
-                <div class="bg-white rounded-xl p-6 shadow-sm border animate-fade-in">
-                    <div class="text-blue-500 text-3xl mb-2">
-                        <i class="fas fa-database"></i>
+                    <h2 class="text-5xl font-bold text-gray-900 mb-4">
+                        Chào mừng đến với 
+                        <span class="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                            Emlinh AI
+                        </span>
+                    </h2>
+                    <p class="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+                        Trò chuyện với AI thông minh và tạo ra những video tuyệt vời trong chỉ một cuộc hội thoại
+                    </p>
+                    
+                    <!-- Quick Stats -->
+                    <div class="grid md:grid-cols-3 gap-6 max-w-3xl mx-auto">
+                        <div class="bg-white/60 backdrop-blur-sm rounded-xl p-6 border border-white/20">
+                            <div class="text-emerald-500 text-3xl mb-2">
+                                <i class="fas fa-comments"></i>
+                            </div>
+                            <h3 class="font-semibold text-gray-900">Chat AI</h3>
+                            <p class="text-emerald-600 text-sm">Sẵn sàng trò chuyện</p>
+                        </div>
+                        
+                        <div class="bg-white/60 backdrop-blur-sm rounded-xl p-6 border border-white/20">
+                            <div class="text-purple-500 text-3xl mb-2">
+                                <i class="fas fa-video"></i>
+                            </div>
+                            <h3 class="font-semibold text-gray-900">Video Producer</h3>
+                            <p class="text-purple-600 text-sm">Tạo video tự động</p>
+                        </div>
+                        
+                        <div class="bg-white/60 backdrop-blur-sm rounded-xl p-6 border border-white/20">
+                            <div class="text-blue-500 text-3xl mb-2">
+                                <i class="fas fa-cogs"></i>
+                            </div>
+                            <h3 class="font-semibold text-gray-900">Hệ thống</h3>
+                            <p class="text-blue-600 text-sm" id="system-status">Đang kiểm tra...</p>
+                        </div>
                     </div>
-                    <h3 class="font-semibold text-gray-900">PostgreSQL</h3>
-                    <p class="text-blue-600 text-sm">✅ Đã kết nối</p>
-                </div>
-                
-                <div class="bg-white rounded-xl p-6 shadow-sm border animate-fade-in">
-                    <div class="text-purple-500 text-3xl mb-2">
-                        <i class="fas fa-robot"></i>
-                    </div>
-                    <h3 class="font-semibold text-gray-900">CrewAI</h3>
-                    <p class="text-purple-600 text-sm">✅ Sẵn sàng</p>
                 </div>
             </div>
         </div>
 
-        <!-- CrewAI Features -->
-        <div class="grid lg:grid-cols-2 gap-8">
-            <!-- Content Creation -->
-            <div class="bg-white rounded-xl shadow-sm border p-6 animate-fade-in">
-                <div class="flex items-center mb-4">
-                    <i class="fas fa-pen-fancy text-blue-600 text-xl mr-3"></i>
-                    <h3 class="text-xl font-bold text-gray-900">Tạo Nội Dung AI</h3>
-                </div>
-                
-                <form id="content-form" class="space-y-4">
-                    <div>
-                        <label for="topic-input" class="block text-sm font-medium text-gray-700 mb-2">
-                            Chủ đề muốn tạo nội dung:
-                        </label>
-                        <input 
-                            type="text" 
-                            id="topic-input" 
-                            placeholder="VD: AI và tương lai của công nghệ..."
-                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                            required
-                        >
+        <!-- Main Actions -->
+        <div class="grid lg:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            <!-- Chat AI Card -->
+            <div class="group relative">
+                <div class="absolute inset-0 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl blur opacity-20 group-hover:opacity-30 transition-opacity"></div>
+                <div class="relative bg-white/80 backdrop-blur-sm rounded-2xl p-8 border border-white/20 shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
+                    <div class="flex items-center mb-6">
+                        <div class="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl p-3 mr-4">
+                            <i class="fas fa-comments text-white text-2xl"></i>
+                        </div>
+                        <h3 class="text-2xl font-bold text-gray-900">Chat với AI</h3>
                     </div>
                     
-                    <button 
-                        type="submit" 
-                        class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center"
-                    >
-                        <i class="fas fa-magic mr-2"></i>
-                        Tạo Nội Dung
-                    </button>
-                </form>
-                
-                <div id="content-result" class="mt-4 min-h-[50px]"></div>
+                    <p class="text-gray-600 mb-6 leading-relaxed">
+                        Trò chuyện với AI thông minh, nhận tư vấn và hướng dẫn. AI có thể tạo video cho bạn ngay trong cuộc trò chuyện.
+                    </p>
+                    
+                    <div class="space-y-3 mb-6">
+                        <div class="flex items-center text-sm text-gray-600">
+                            <i class="fas fa-check-circle text-emerald-500 mr-2"></i>
+                            <span>Trò chuyện tự nhiên với AI</span>
+                        </div>
+                        <div class="flex items-center text-sm text-gray-600">
+                            <i class="fas fa-check-circle text-emerald-500 mr-2"></i>
+                            <span>Tạo video trực tiếp trong chat</span>
+                        </div>
+                        <div class="flex items-center text-sm text-gray-600">
+                            <i class="fas fa-check-circle text-emerald-500 mr-2"></i>
+                            <span>Lưu trữ lịch sử cuộc trò chuyện</span>
+                        </div>
+                    </div>
+                    
+                    <a href="/chat" class="block w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3 px-6 rounded-xl font-semibold text-center hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 transform hover:scale-105">
+                        <i class="fas fa-comment-dots mr-2"></i>
+                        Bắt đầu trò chuyện
+                    </a>
+                </div>
             </div>
 
-            <!-- Data Analysis -->
-            <div class="bg-white rounded-xl shadow-sm border p-6 animate-fade-in">
-                <div class="flex items-center mb-4">
-                    <i class="fas fa-chart-line text-green-600 text-xl mr-3"></i>
-                    <h3 class="text-xl font-bold text-gray-900">Phân Tích Dữ Liệu AI</h3>
+            <!-- Video Producer Card -->
+            <div class="group relative">
+                <div class="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl blur opacity-20 group-hover:opacity-30 transition-opacity"></div>
+                <div class="relative bg-white/80 backdrop-blur-sm rounded-2xl p-8 border border-white/20 shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
+                    <div class="flex items-center mb-6">
+                        <div class="bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl p-3 mr-4">
+                            <i class="fas fa-video text-white text-2xl"></i>
+                        </div>
+                        <h3 class="text-2xl font-bold text-gray-900">Video Producer</h3>
+                    </div>
+                    
+                    <p class="text-gray-600 mb-6 leading-relaxed">
+                        Tạo video chuyên nghiệp với AI avatar, giọng nói tự nhiên và hiệu ứng hình ảnh đẹp mắt.
+                    </p>
+                    
+                    <div class="space-y-3 mb-6">
+                        <div class="flex items-center text-sm text-gray-600">
+                            <i class="fas fa-check-circle text-emerald-500 mr-2"></i>
+                            <span>AI Avatar với lip-sync tự nhiên</span>
+                        </div>
+                        <div class="flex items-center text-sm text-gray-600">
+                            <i class="fas fa-check-circle text-emerald-500 mr-2"></i>
+                            <span>Text-to-Speech chất lượng cao</span>
+                        </div>
+                        <div class="flex items-center text-sm text-gray-600">
+                            <i class="fas fa-check-circle text-emerald-500 mr-2"></i>
+                            <span>Render video HD tự động</span>
+                        </div>
+                    </div>
+                    
+                    <a href="/video-production" class="block w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 px-6 rounded-xl font-semibold text-center hover:from-purple-700 hover:to-pink-700 transition-all duration-200 transform hover:scale-105">
+                        <i class="fas fa-play-circle mr-2"></i>
+                        Tạo video ngay
+                    </a>
                 </div>
-                
-                <form id="analysis-form" class="space-y-4">
-                    <div>
-                        <label for="data-input" class="block text-sm font-medium text-gray-700 mb-2">
-                            Dữ liệu cần phân tích:
-                        </label>
-                        <textarea 
-                            id="data-input" 
-                            rows="3"
-                            placeholder="VD: Doanh thu Q1: 100M, Q2: 120M, Q3: 110M..."
-                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all resize-none"
-                            required
-                        ></textarea>
-                    </div>
-                    
-                    <div>
-                        <label for="analysis-type" class="block text-sm font-medium text-gray-700 mb-2">
-                            Loại phân tích:
-                        </label>
-                        <select 
-                            id="analysis-type" 
-                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
-                        >
-                            <option value="general">Tổng quát</option>
-                            <option value="financial">Tài chính</option>
-                            <option value="market">Thị trường</option>
-                            <option value="technical">Kỹ thuật</option>
-                        </select>
-                    </div>
-                    
-                    <button 
-                        type="submit" 
-                        class="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center justify-center"
-                    >
-                        <i class="fas fa-search mr-2"></i>
-                        Phân Tích
-                    </button>
-                </form>
-                
-                <div id="analysis-result" class="mt-4 min-h-[50px]"></div>
             </div>
         </div>
 
-        <!-- Quick Actions -->
-        <div class="mt-12 text-center animate-fade-in">
-            <h3 class="text-2xl font-bold text-gray-900 mb-6">Thao Tác Nhanh</h3>
+        <!-- Quick Access -->
+        <div class="mt-16 text-center animate-fade-in">
+            <h3 class="text-2xl font-bold text-gray-900 mb-6">Truy cập nhanh</h3>
             <div class="flex flex-wrap justify-center gap-4">
-                <a href="/health" class="bg-white text-gray-700 px-6 py-3 rounded-lg border hover:bg-gray-50 transition-colors font-medium inline-flex items-center">
-                    <i class="fas fa-stethoscope mr-2 text-blue-600"></i>
-                    Kiểm tra hệ thống
+                <a href="/videos" class="bg-white/80 backdrop-blur-sm text-gray-700 px-6 py-3 rounded-xl border border-white/20 hover:bg-white hover:shadow-lg transition-all duration-200 font-medium inline-flex items-center space-x-2">
+                    <i class="fas fa-film text-indigo-600"></i>
+                    <span>Thư viện Video</span>
                 </a>
-                <button class="bg-white text-gray-700 px-6 py-3 rounded-lg border hover:bg-gray-50 transition-colors font-medium inline-flex items-center">
-                    <i class="fas fa-cog mr-2 text-gray-600"></i>
-                    Cài đặt
-                </button>
-                <button class="bg-white text-gray-700 px-6 py-3 rounded-lg border hover:bg-gray-50 transition-colors font-medium inline-flex items-center">
-                    <i class="fas fa-book mr-2 text-purple-600"></i>
-                    Tài liệu
+                <button id="quick-health-check" class="bg-white/80 backdrop-blur-sm text-gray-700 px-6 py-3 rounded-xl border border-white/20 hover:bg-white hover:shadow-lg transition-all duration-200 font-medium inline-flex items-center space-x-2">
+                    <i class="fas fa-stethoscope text-emerald-600"></i>
+                    <span>Kiểm tra hệ thống</span>
                 </button>
             </div>
         </div>
@@ -195,15 +202,94 @@
     <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
 
     <!-- Footer -->
-    <footer class="bg-white border-t mt-16">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <footer class="bg-white/80 backdrop-blur-sm border-t border-white/20 mt-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div class="text-center text-gray-600">
-                <p>&copy; 2025 Emlinh Management System. Made with ❤️ using Flask & CrewAI</p>
+                <p class="text-lg font-medium mb-2">🤖 Emlinh AI Assistant</p>
+                <p class="text-sm">Trò chuyện thông minh • Tạo video tự động • Đơn giản và hiệu quả</p>
+                <p class="text-xs mt-4 text-gray-500">&copy; 2025 Emlinh AI. Made with ❤️ using Flask & AI</p>
             </div>
         </div>
     </footer>
 
-    <!-- JavaScript -->
-    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <!-- Custom JavaScript -->
+    <script>
+        // Utility functions
+        const Utils = {
+            showToast: (message, type = 'success') => {
+                const toastContainer = document.getElementById('toast-container');
+                if (!toastContainer) return;
+
+                const toast = document.createElement('div');
+                const bgColor = type === 'success' ? 'bg-emerald-500' : 'bg-red-500';
+                
+                toast.className = `${bgColor} text-white px-6 py-4 rounded-xl shadow-lg mb-2 transform translate-x-full transition-transform duration-300`;
+                toast.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <span class="font-medium">${message}</span>
+                        <button class="ml-4 text-white hover:text-gray-200" onclick="this.parentElement.parentElement.remove()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                `;
+                
+                toastContainer.appendChild(toast);
+                
+                // Show toast
+                setTimeout(() => toast.classList.remove('translate-x-full'), 100);
+                
+                // Auto hide after 5 seconds
+                setTimeout(() => {
+                    toast.classList.add('translate-x-full');
+                    setTimeout(() => toast.remove(), 300);
+                }, 5000);
+            },
+
+            checkHealth: async () => {
+                try {
+                    const response = await fetch('/health');
+                    const data = await response.json();
+                    
+                    const statusElement = document.getElementById('system-status');
+                    if (data.status === 'healthy') {
+                        statusElement.textContent = '✅ Hoạt động tốt';
+                        statusElement.className = 'text-emerald-600 text-sm';
+                        Utils.showToast('Hệ thống hoạt động bình thường');
+                    } else {
+                        statusElement.textContent = '❌ Có lỗi';
+                        statusElement.className = 'text-red-600 text-sm';
+                        Utils.showToast('Hệ thống có vấn đề', 'error');
+                    }
+                } catch (error) {
+                    const statusElement = document.getElementById('system-status');
+                    statusElement.textContent = '❌ Lỗi kết nối';
+                    statusElement.className = 'text-red-600 text-sm';
+                    Utils.showToast('Không thể kết nối với server', 'error');
+                }
+            }
+        };
+
+        // Initialize when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // Animate elements on load
+            const animatedElements = document.querySelectorAll('.animate-fade-in');
+            animatedElements.forEach((el, index) => {
+                el.style.opacity = '0';
+                el.style.transform = 'translateY(20px)';
+                setTimeout(() => {
+                    el.style.opacity = '1';
+                    el.style.transform = 'translateY(0)';
+                    el.style.transition = 'all 0.6s ease-out';
+                }, index * 100);
+            });
+
+            // Health check buttons
+            document.getElementById('health-check-btn').addEventListener('click', Utils.checkHealth);
+            document.getElementById('quick-health-check').addEventListener('click', Utils.checkHealth);
+            
+            // Initial health check
+            setTimeout(Utils.checkHealth, 1000);
+        });
+    </script>
 </body>
 </html>

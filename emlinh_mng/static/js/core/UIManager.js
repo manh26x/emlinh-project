@@ -53,6 +53,28 @@ class UIManager {
         this.chatMessages.insertAdjacentHTML('beforeend', messageHtml);
     }
     
+    addAIMessageWithVideo(message, videoHtml, videoData) {
+        const timeStr = new Date().toLocaleTimeString('vi-VN');
+        const messageHtml = `
+            <div class="message ai-message mb-3">
+                <div class="d-flex">
+                    <div class="avatar bg-primary text-white rounded-circle me-2 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                        🤖
+                    </div>
+                    <div class="message-content">
+                        <div class="bg-light rounded p-3">
+                            ${this.escapeHtml(message)}
+                            ${videoHtml}
+                        </div>
+                        <small class="text-muted">${timeStr}</small>
+                    </div>
+                </div>
+            </div>
+        `;
+        this.chatMessages.insertAdjacentHTML('beforeend', messageHtml);
+        this.scrollToBottom();
+    }
+    
     formatMessage(message) {
         // Convert line breaks and format basic markdown
         let formatted = this.escapeHtml(message)

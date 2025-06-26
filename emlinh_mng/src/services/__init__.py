@@ -8,11 +8,11 @@ This package contains:
 """
 
 from .chat_service import ChatService, get_chat_service
-from .crewai_service import CrewAIService, crewai_service
+from .flow_service import FlowService, flow_service
 from .embedding_service import OllamaEmbeddingService, get_embedding_service
 
 __all__ = [
     'ChatService', 'get_chat_service',
-    'CrewAIService', 'crewai_service', 
+    'FlowService', 'flow_service', 
     'OllamaEmbeddingService', 'get_embedding_service'
 ]

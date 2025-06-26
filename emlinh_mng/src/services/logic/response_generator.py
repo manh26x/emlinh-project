@@ -14,24 +14,30 @@ logger = logging.getLogger(__name__)
 class ResponseGenerator:
     """Handles AI response generation for different message types"""
     
-    def __init__(self, crewai_service=None):
-        self.crewai_service = crewai_service
+    def __init__(self, flow_service=None):
+        self.flow_service = flow_service
     
     def generate_planning_response(self, user_message: str) -> str:
         """Tạo phản hồi cho planning mode"""
         try:
-            # Sử dụng Em Linh AI cho planning
-            if self.crewai_service:
-                planning_context = f"Người dùng muốn lập kế hoạch về: {user_message}. Hãy trò chuyện tự nhiên và đưa ra kế hoạch cụ thể, nếu có ý tưởng hay thì hỏi người dùng có muốn thêm vào không."
-                result = self.crewai_service.run_emlinh_conversation(user_message, planning_context)
-                if result.get('success'):
-                    crew_result = result.get('result', 'Không thể tạo kế hoạch')
-                    # Convert CrewOutput to string if needed
-                    if hasattr(crew_result, 'raw'):
-                        return str(crew_result.raw)
-                    return str(crew_result)
+            # Sử dụng FlowService cho planning
+            if self.flow_service:
+                import asyncio
+                try:
+                    loop = asyncio.get_event_loop()
+                except RuntimeError:
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                
+                result = loop.run_until_complete(
+                    self.flow_service._process_general_message(
+                        f"Lập kế hoạch cho: {user_message}. Hãy đưa ra kế hoạch cụ thể và chi tiết.",
+                        "planning_session"
+                    )
+                )
+                return result
         except Exception as e:
-            logger.warning(f"CrewAI planning failed, using fallback: {str(e)}")
+            logger.warning(f"FlowService planning failed, using fallback: {str(e)}")
         
         # Fallback response cho planning
         return f"""📋 **Kế hoạch Content: {user_message}**
@@ -69,18 +75,24 @@ Bạn có muốn tôi elaborate thêm về bước nào không?"""
     def generate_brainstorm_response(self, user_message: str) -> str:
         """Tạo phản hồi cho brainstorm mode"""
         try:
-            # Sử dụng Em Linh AI cho brainstorm
-            if self.crewai_service:
-                brainstorm_context = f"Người dùng muốn brainstorm ý tưởng về: {user_message}. Hãy trò chuyện tự nhiên, đưa ra nhiều ý tưởng sáng tạo và hỏi người dùng có muốn phát triển ý tưởng nào không."
-                result = self.crewai_service.run_emlinh_conversation(user_message, brainstorm_context)
-                if result.get('success'):
-                    crew_result = result.get('result', 'Không thể tạo ý tưởng')
-                    # Convert CrewOutput to string if needed
-                    if hasattr(crew_result, 'raw'):
-                        return str(crew_result.raw)
-                    return str(crew_result)
+            # Sử dụng FlowService cho brainstorm
+            if self.flow_service:
+                import asyncio
+                try:
+                    loop = asyncio.get_event_loop()
+                except RuntimeError:
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                
+                result = loop.run_until_complete(
+                    self.flow_service._process_general_message(
+                        f"Brainstorm ý tưởng về: {user_message}. Hãy đưa ra nhiều ý tưởng sáng tạo và đa dạng.",
+                        "brainstorm_session"
+                    )
+                )
+                return result
         except Exception as e:
-            logger.warning(f"CrewAI brainstorm failed, using fallback: {str(e)}")
+            logger.warning(f"FlowService brainstorm failed, using fallback: {str(e)}")
         
         # Fallback response cho brainstorm
         return f"""💡 **Brainstorm Ideas cho: {user_message}**
@@ -118,17 +130,21 @@ Bạn muốn tôi phát triển ý tưởng nào cụ thể hơn?"""
     def generate_conversation_response(self, user_message: str, context: str = "") -> str:
         """Tạo phản hồi cho conversation mode"""
         try:
-            # Sử dụng Em Linh AI mới
-            if self.crewai_service:
-                result = self.crewai_service.run_emlinh_conversation(user_message, context)
-                if result.get('success'):
-                    crew_result = result.get('result', 'Xin chào! Tôi có thể giúp gì cho bạn?')
-                    # Convert CrewOutput to string if needed
-                    if hasattr(crew_result, 'raw'):
-                        return str(crew_result.raw)
-                    return str(crew_result)
+            # Sử dụng FlowService cho conversation
+            if self.flow_service:
+                import asyncio
+                try:
+                    loop = asyncio.get_event_loop()
+                except RuntimeError:
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                
+                result = loop.run_until_complete(
+                    self.flow_service._process_general_message(user_message, "conversation_session")
+                )
+                return result
         except Exception as e:
-            logger.warning(f"CrewAI conversation failed, using fallback: {str(e)}")
+            logger.warning(f"FlowService conversation failed, using fallback: {str(e)}")
         
         return self._generate_fallback_conversation_response(user_message)
     

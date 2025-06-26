@@ -1,20 +1,44 @@
 {% extends "base.html" %}
 
-{% block title %}Sản xuất Video - Emlinh Management{% endblock %}
+{% block title %}Video Producer - Emlinh AI Assistant{% endblock %}
 
 {% block extra_css %}
 <style>
-    .video-config-section {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    .hero-section {
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.9), rgba(139, 92, 246, 0.9));
+        backdrop-filter: blur(10px);
         color: white;
-        border-radius: 15px;
-        padding: 2rem;
+        border-radius: 2rem;
+        padding: 3rem;
         margin-bottom: 2rem;
     }
     
+    .feature-card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        border: none;
+        border-radius: 1.5rem;
+        transition: all 0.3s ease;
+        overflow: hidden;
+    }
+    
+    .feature-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    }
+    
+    .feature-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 0;
+    }
+    
     .render-status-card {
-        border-left: 4px solid #007bff;
-        background-color: #f8f9fa;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        border: none;
+        border-radius: 1.5rem;
     }
     
     .progress-animate {
@@ -22,211 +46,298 @@
     }
     
     .job-card {
-        border: 1px solid #dee2e6;
-        border-radius: 10px;
-        padding: 1rem;
+        border: none;
+        border-radius: 1rem;
+        padding: 1.5rem;
         margin-bottom: 1rem;
-        background: white;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(10px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+    }
+    
+    .job-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
     }
     
     .status-badge {
         font-size: 0.8rem;
-        padding: 0.25rem 0.5rem;
+        padding: 0.5rem 1rem;
+        border-radius: 2rem;
+        font-weight: 600;
     }
     
     .form-floating label {
-        color: #6c757d;
+        color: #6b7280;
+        font-weight: 500;
     }
     
     .btn-gradient {
-        background: linear-gradient(45deg, #007bff, #0056b3);
+        background: linear-gradient(45deg, #6366f1, #8b5cf6);
         border: none;
         color: white;
+        border-radius: 1rem;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
         transition: all 0.3s ease;
     }
     
     .btn-gradient:hover {
-        background: linear-gradient(45deg, #0056b3, #004085);
+        background: linear-gradient(45deg, #4f46e5, #7c3aed);
         transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3);
+        color: white;
+    }
+    
+    .form-control, .form-select {
+        border-radius: 0.75rem;
+        border: 2px solid #e5e7eb;
+        transition: all 0.2s ease;
+    }
+    
+    .form-control:focus, .form-select:focus {
+        border-color: #6366f1;
+        box-shadow: 0 0 0 0.2rem rgba(99, 102, 241, 0.15);
+    }
+    
+    .alert-info {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.1));
+        border: 1px solid rgba(59, 130, 246, 0.2);
+        border-radius: 1rem;
+        color: #1e40af;
+    }
+    
+    .container-wrapper {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        min-height: 100vh;
+        padding: 2rem 0;
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4">
-    <div class="row">
-        <!-- Text-to-Speech Panel -->
-        <div class="col-12 mb-4">
-            <div class="card border-success">
-                <div class="card-header bg-success text-white">
-                    <h5 class="mb-0">
-                        <i class="fas fa-microphone me-2"></i>
-                        Text-to-Speech với GPT-4o-mini-tts
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <form id="tts-form">
-                        <div class="row">
-                            <div class="col-md-8">
-                                <div class="form-floating mb-3">
-                                    <textarea class="form-control" id="tts-text" 
-                                              placeholder="Nhập text để chuyển đổi thành giọng nói..."
-                                              style="height: 120px; resize: vertical;"
-                                              maxlength="4000"></textarea>
-                                    <label for="tts-text">Text để chuyển đổi (tối đa 4000 ký tự) *</label>
-                                </div>
-                                <div class="small text-muted mb-3">
-                                    <i class="fas fa-info-circle"></i>
-                                    Voice: Nova (nói nhấn nhá), Model: tts-1
-                                    <br>Sẽ tạo file WAV và JSON lip-sync tự động
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-floating mb-3">
-                                    <input type="text" class="form-control" id="tts-filename" 
-                                           placeholder="Tên file (không cần đuôi)">
-                                    <label for="tts-filename">Tên file (tuỳ chọn)</label>
-                                </div>
-                                <button type="submit" class="btn btn-success btn-lg w-100">
-                                    <i class="fas fa-magic me-2"></i>
-                                    Tạo Speech
-                                </button>
-                                <div id="tts-progress" class="mt-3" style="display: none;">
-                                    <div class="progress mb-2">
-                                        <div class="progress-bar bg-success" style="width: 0%"></div>
-                                    </div>
-                                    <small class="text-muted">Đang xử lý...</small>
-                                </div>
+<div class="container-wrapper">
+    <div class="container-fluid">
+        <!-- Hero Section -->
+        <div class="hero-section text-center">
+            <div class="row align-items-center">
+                <div class="col-md-8 mx-auto">
+                    <div class="mb-4">
+                        <i class="fas fa-video" style="font-size: 4rem; margin-bottom: 1rem;"></i>
+                    </div>
+                    <h1 class="display-4 fw-bold mb-3">🎬 Video Producer AI</h1>
+                    <p class="lead mb-4">Tạo video chuyên nghiệp với AI avatar và giọng nói tự nhiên</p>
+                    <div class="row text-center">
+                        <div class="col-md-4">
+                            <div class="d-flex align-items-center justify-content-center mb-2">
+                                <i class="fas fa-microphone-alt me-2"></i>
+                                <span class="fw-medium">Text-to-Speech</span>
                             </div>
                         </div>
-                    </form>
-                    
-                    <!-- TTS Jobs List -->
-                    <div id="tts-jobs-list" class="mt-4">
-                        <!-- TTS jobs sẽ được hiển thị ở đây -->
+                        <div class="col-md-4">
+                            <div class="d-flex align-items-center justify-content-center mb-2">
+                                <i class="fas fa-user-tie me-2"></i>
+                                <span class="fw-medium">AI Avatar</span>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="d-flex align-items-center justify-content-center mb-2">
+                                <i class="fas fa-magic me-2"></i>
+                                <span class="fw-medium">Lip Sync</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-    
-    <div class="row">
-        <!-- Configuration Panel -->
-        <div class="col-lg-6">
-            <div class="video-config-section">
-                <h2 class="mb-4">
-                    <i class="fas fa-video me-2"></i>
-                    Cấu hình Video
-                </h2>
-                
-                <form id="video-config-form">
-                    <div class="row">
-                        <!-- Composition Selection -->
-                        <div class="col-md-6 mb-3">
-                            <div class="form-floating">
-                                <select class="form-select" id="composition-select" required>
-                                    <option value="">Đang tải...</option>
-                                </select>
-                                <label for="composition-select">Composition *</label>
+
+        <div class="row">
+            <!-- Text-to-Speech Panel -->
+            <div class="col-12 mb-4">
+                <div class="feature-card">
+                    <div class="feature-header">
+                        <h5 class="mb-0 fw-bold">
+                            <i class="fas fa-microphone me-2"></i>
+                            Tạo giọng nói AI
+                        </h5>
+                        <small class="opacity-75">Chuyển đổi văn bản thành giọng nói tự nhiên</small>
+                    </div>
+                    <div class="card-body p-4">
+                        <form id="tts-form">
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <div class="form-floating mb-3">
+                                        <textarea class="form-control" id="tts-text" 
+                                                  placeholder="Nhập text để chuyển đổi thành giọng nói..."
+                                                  style="height: 120px; resize: vertical;"
+                                                  maxlength="4000"></textarea>
+                                        <label for="tts-text">Nội dung cần chuyển thành giọng nói (tối đa 4000 ký tự) *</label>
+                                    </div>
+                                    <div class="small text-muted mb-3 p-3 rounded" style="background: rgba(59, 130, 246, 0.05);">
+                                        <i class="fas fa-info-circle text-primary me-2"></i>
+                                        <strong>Voice:</strong> Nova (giọng nói tự nhiên) • <strong>Model:</strong> TTS-1
+                                        <br>Tự động tạo file WAV và JSON lip-sync cho video
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-floating mb-3">
+                                        <input type="text" class="form-control" id="tts-filename" 
+                                               placeholder="Tên file (không cần đuôi)">
+                                        <label for="tts-filename">Tên file (tuỳ chọn)</label>
+                                    </div>
+                                    <button type="submit" class="btn btn-gradient w-100 mb-3">
+                                        <i class="fas fa-magic me-2"></i>
+                                        Tạo giọng nói
+                                    </button>
+                                    <div id="tts-progress" class="mt-3" style="display: none;">
+                                        <div class="progress mb-2">
+                                            <div class="progress-bar bg-primary progress-animate" style="width: 0%"></div>
+                                        </div>
+                                        <small class="text-muted">Đang xử lý...</small>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
+                        </form>
                         
-                        <!-- Duration -->
-                        <div class="col-md-6 mb-3">
-                            <div class="form-floating">
-                                <input type="number" class="form-control" id="duration-input" 
-                                       min="1" max="300" value="10" step="0.5">
-                                <label for="duration-input">Thời lượng (giây)</label>
-                            </div>
+                        <!-- TTS Jobs List -->
+                        <div id="tts-jobs-list" class="mt-4">
+                            <!-- TTS jobs sẽ được hiển thị ở đây -->
                         </div>
                     </div>
-                    
-                    <div class="row">
-                        <!-- Audio File Selection -->
-                        <div class="col-md-6 mb-3">
-                            <div class="form-floating">
-                                <select class="form-select" id="audio-select">
-                                    <option value="">Đang tải...</option>
-                                </select>
-                                <label for="audio-select">File Audio</label>
-                            </div>
-                        </div>
-                        
-                        <!-- Background Scene -->
-                        <div class="col-md-6 mb-3">
-                            <div class="form-floating">
-                                <select class="form-select" id="background-select">
-                                    <option value="none">Không có</option>
-                                    <option value="office">Văn phòng</option>
-                                    <option value="abstract">Trừu tượng</option>
-                                </select>
-                                <label for="background-select">Nền</label>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Camera Settings - Đã tối ưu tự động -->
-                    <div class="alert alert-info mb-3">
-                        <i class="fas fa-camera me-2"></i>
-                        <strong>Camera Settings:</strong> Đã được tối ưu tự động cho từng loại composition. 
-                        Hệ thống sẽ tự động chọn góc nhìn và vị trí camera phù hợp nhất.
-                    </div>
-                    
-                    <!-- Output Name -->
-                    <div class="mb-3">
-                        <div class="form-floating">
-                            <input type="text" class="form-control" id="output-name" 
-                                   placeholder="Để trống để tạo tự động">
-                            <label for="output-name">Tên file output (tuỳ chọn)</label>
-                        </div>
-                    </div>
-                    
-                    <!-- Render Button -->
-                    <div class="text-center">
-                        <button type="submit" class="btn btn-gradient btn-lg px-5">
-                            <i class="fas fa-play me-2"></i>
-                            Bắt đầu Render
-                        </button>
-                    </div>
-                </form>
+                </div>
             </div>
         </div>
         
-        <!-- Status Panel -->
-        <div class="col-lg-6">
-            <div class="card render-status-card">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">
-                        <i class="fas fa-tasks me-2"></i>
-                        Trạng thái Render
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div id="current-render-status" class="mb-4">
-                        <p class="text-muted mb-0">Chưa có render job nào đang chạy</p>
+        <div class="row">
+            <!-- Video Configuration Panel -->
+            <div class="col-lg-6">
+                <div class="feature-card h-100">
+                    <div class="feature-header">
+                        <h5 class="mb-0 fw-bold">
+                            <i class="fas fa-cogs me-2"></i>
+                            Cấu hình Video
+                        </h5>
+                        <small class="opacity-75">Thiết lập thông số cho video AI</small>
                     </div>
-                    
-                    <div id="render-jobs-list">
-                        <!-- Render jobs sẽ được load ở đây -->
+                    <div class="card-body p-4">
+                        <form id="video-config-form">
+                            <div class="row">
+                                <!-- Composition Selection -->
+                                <div class="col-md-6 mb-3">
+                                    <div class="form-floating">
+                                        <select class="form-select" id="composition-select" required>
+                                            <option value="">Đang tải compositions...</option>
+                                        </select>
+                                        <label for="composition-select">Composition *</label>
+                                    </div>
+                                </div>
+                                
+                                <!-- Duration -->
+                                <div class="col-md-6 mb-3">
+                                    <div class="form-floating">
+                                        <input type="number" class="form-control" id="duration-input" 
+                                               min="1" max="300" value="10" step="0.5">
+                                        <label for="duration-input">Thời lượng (giây)</label>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <!-- Audio File Selection -->
+                                <div class="col-md-6 mb-3">
+                                    <div class="form-floating">
+                                        <select class="form-select" id="audio-select">
+                                            <option value="">Đang tải audio files...</option>
+                                        </select>
+                                        <label for="audio-select">File Audio</label>
+                                    </div>
+                                </div>
+                                
+                                <!-- Background Scene -->
+                                <div class="col-md-6 mb-3">
+                                    <div class="form-floating">
+                                        <select class="form-select" id="background-select">
+                                            <option value="none">Không có</option>
+                                            <option value="office">Văn phòng</option>
+                                            <option value="abstract">Trừu tượng</option>
+                                        </select>
+                                        <label for="background-select">Nền video</label>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Camera Settings Info -->
+                            <div class="alert alert-info mb-3">
+                                <i class="fas fa-camera me-2"></i>
+                                <strong>Camera Settings:</strong> Đã được tối ưu tự động cho từng composition. 
+                                Hệ thống sẽ tự động chọn góc nhìn và vị trí camera phù hợp nhất.
+                            </div>
+                            
+                            <!-- Output Name -->
+                            <div class="mb-4">
+                                <div class="form-floating">
+                                    <input type="text" class="form-control" id="output-name" 
+                                           placeholder="Để trống để tạo tự động">
+                                    <label for="output-name">Tên file output (tuỳ chọn)</label>
+                                </div>
+                            </div>
+                            
+                            <!-- Render Button -->
+                            <div class="text-center">
+                                <button type="submit" class="btn btn-gradient btn-lg px-5">
+                                    <i class="fas fa-play me-2"></i>
+                                    Bắt đầu Render Video
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Status Panel -->
+            <div class="col-lg-6">
+                <div class="render-status-card h-100">
+                    <div class="feature-header">
+                        <h5 class="mb-0 fw-bold">
+                            <i class="fas fa-chart-line me-2"></i>
+                            Trạng thái Render
+                        </h5>
+                        <small class="opacity-75">Theo dõi quá trình tạo video</small>
+                    </div>
+                    <div class="card-body p-4">
+                        <div id="render-status">
+                            <div class="text-center text-muted py-5">
+                                <i class="fas fa-video" style="font-size: 3rem; opacity: 0.3; margin-bottom: 1rem;"></i>
+                                <p class="mb-0">Chưa có video nào đang render</p>
+                                <small>Cấu hình và bắt đầu render để xem trạng thái</small>
+                            </div>
+                        </div>
+                        
+                        <!-- Render Jobs List -->
+                        <div id="render-jobs-list" class="mt-4">
+                            <!-- Render jobs sẽ được hiển thị ở đây -->
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-</div>
 
-<!-- Toast Container -->
-<div class="toast-container position-fixed bottom-0 end-0 p-3">
-    <div id="notification-toast" class="toast" role="alert">
-        <div class="toast-header">
-            <i class="fas fa-info-circle text-primary me-2"></i>
-            <strong class="me-auto">Thông báo</strong>
-            <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
-        </div>
-        <div class="toast-body" id="toast-message">
-            <!-- Message sẽ được điền ở đây -->
+        <!-- Quick Actions -->
+        <div class="text-center mt-5">
+            <h4 class="text-white mb-4">Truy cập nhanh</h4>
+            <div class="d-flex flex-wrap justify-content-center gap-3">
+                <a href="/chat" class="btn btn-outline-light rounded-pill px-4">
+                    <i class="fas fa-comments me-2"></i>Chat AI
+                </a>
+                <a href="/videos" class="btn btn-outline-light rounded-pill px-4">
+                    <i class="fas fa-film me-2"></i>Thư viện Video
+                </a>
+                <button id="health-check-quick" class="btn btn-outline-light rounded-pill px-4">
+                    <i class="fas fa-heartbeat me-2"></i>Health Check
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -234,4 +345,26 @@
 
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/video_production.js') }}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Quick health check
+        const quickHealthBtn = document.getElementById('health-check-quick');
+        if (quickHealthBtn) {
+            quickHealthBtn.addEventListener('click', async function() {
+                try {
+                    const response = await fetch('/health');
+                    const data = await response.json();
+                    
+                    if (data.status === 'healthy') {
+                        alert('✅ Hệ thống hoạt động bình thường\nDatabase: ' + data.database);
+                    } else {
+                        alert('❌ Hệ thống có vấn đề');
+                    }
+                } catch (error) {
+                    alert('❌ Không thể kết nối với server');
+                }
+            });
+        }
+    });
+</script>
 {% endblock %} 

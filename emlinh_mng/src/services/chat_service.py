@@ -5,7 +5,7 @@ from typing import Dict, List, Optional
 from flask import current_app
 from ..app.models import Chat, Idea, Vector, generate_session_id, db
 from .embedding_service import get_embedding_service
-from .crewai_service import crewai_service
+from .flow_service import flow_service
 from .logic.response_generator import ResponseGenerator
 from .logic.idea_manager import IdeaManager
 
@@ -16,7 +16,7 @@ class ChatService:
     
     def __init__(self):
         self.embedding_service = get_embedding_service()
-        self.response_generator = ResponseGenerator(crewai_service)
+        self.response_generator = ResponseGenerator(flow_service)
         self.idea_manager = IdeaManager(db.session)
     
     def send_message(self, user_message: str, session_id: str = None, message_type: str = 'conversation') -> Dict:

@@ -1,5 +1,8 @@
+console.log('📁 VideoManager.js loaded');
+
 class VideoManager {
     constructor(notificationManager, uiManager) {
+        console.log('✅ VideoManager constructor called');
         this.notificationManager = notificationManager;
         this.uiManager = uiManager;
         this.bindEvents();

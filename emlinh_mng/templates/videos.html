@@ -1,30 +1,33 @@
 {% extends "base.html" %}
 
-{% block title %}Video Management - Content Manager{% endblock %}
+{% block title %}Thư viện Video - Emlinh AI Assistant{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
+<div class="container-fluid py-4" style="background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); min-height: 100vh;">
     <div class="row">
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center mb-4">
-                <h2>🎬 Quản lý Video</h2>
+                <div>
+                    <h2 class="text-white mb-1">🎬 Thư viện Video AI</h2>
+                    <p class="text-white-50 mb-0">Quản lý và xem các video được tạo bởi AI</p>
+                </div>
                 <div class="btn-group" role="group">
-                    <button class="btn btn-outline-primary" id="refreshVideos">
-                        <i class="fas fa-sync-alt"></i> Làm mới
+                    <button class="btn btn-outline-light rounded-pill me-2" id="refreshVideos">
+                        <i class="fas fa-sync-alt me-1"></i> Làm mới
                     </button>
-                    <a href="/chat" class="btn btn-primary">
-                        <i class="fas fa-plus"></i> Tạo video mới
+                    <a href="/chat" class="btn btn-primary rounded-pill" style="background: linear-gradient(45deg, #6366f1, #8b5cf6); border: none;">
+                        <i class="fas fa-plus me-1"></i> Tạo video mới
                     </a>
                 </div>
             </div>
 
             <!-- Filter Controls -->
-            <div class="card mb-4">
+            <div class="card mb-4 border-0 shadow-sm" style="background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px);">
                 <div class="card-body">
-                    <div class="row">
+                    <div class="row align-items-end">
                         <div class="col-md-3">
-                            <label for="statusFilter" class="form-label">Trạng thái</label>
-                            <select class="form-select" id="statusFilter">
+                            <label for="statusFilter" class="form-label fw-medium">Trạng thái</label>
+                            <select class="form-select rounded-pill" id="statusFilter">
                                 <option value="">Tất cả</option>
                                 <option value="rendering">Đang render</option>
                                 <option value="completed">Hoàn thành</option>
@@ -32,20 +35,20 @@
                             </select>
                         </div>
                         <div class="col-md-3">
-                            <label for="sortOrder" class="form-label">Sắp xếp</label>
-                            <select class="form-select" id="sortOrder">
+                            <label for="sortOrder" class="form-label fw-medium">Sắp xếp</label>
+                            <select class="form-select rounded-pill" id="sortOrder">
                                 <option value="newest">Mới nhất</option>
                                 <option value="oldest">Cũ nhất</option>
                                 <option value="name">Theo tên</option>
                             </select>
                         </div>
                         <div class="col-md-4">
-                            <label for="searchInput" class="form-label">Tìm kiếm</label>
-                            <input type="text" class="form-control" id="searchInput" placeholder="Tìm theo tên hoặc chủ đề...">
+                            <label for="searchInput" class="form-label fw-medium">Tìm kiếm</label>
+                            <input type="text" class="form-control rounded-pill" id="searchInput" placeholder="Tìm theo tên hoặc chủ đề...">
                         </div>
-                        <div class="col-md-2 d-flex align-items-end">
-                            <button class="btn btn-outline-secondary w-100" id="clearFilters">
-                                <i class="fas fa-times"></i> Xóa filter
+                        <div class="col-md-2">
+                            <button class="btn btn-outline-secondary w-100 rounded-pill" id="clearFilters">
+                                <i class="fas fa-times me-1"></i> Xóa filter
                             </button>
                         </div>
                     </div>
@@ -55,10 +58,10 @@
             <!-- Videos Grid -->
             <div id="videosContainer">
                 <div class="text-center p-5">
-                    <div class="spinner-border text-primary" role="status">
+                    <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
                         <span class="visually-hidden">Đang tải...</span>
                     </div>
-                    <p class="mt-2">Đang tải danh sách video...</p>
+                    <p class="text-white">Đang tải danh sách video...</p>
                 </div>
             </div>
 
@@ -75,18 +78,22 @@
 <!-- Video Detail Modal -->
 <div class="modal fade" id="videoDetailModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Chi tiết Video</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header" style="background: linear-gradient(45deg, #6366f1, #8b5cf6);">
+                <h5 class="modal-title text-white fw-bold">
+                    <i class="fas fa-video me-2"></i>Chi tiết Video
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" id="videoDetailContent">
                 <!-- Content sẽ được load động -->
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
-                <button type="button" class="btn btn-danger" id="deleteVideoBtn">
-                    <i class="fas fa-trash"></i> Xóa Video
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary rounded-pill" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>Đóng
+                </button>
+                <button type="button" class="btn btn-danger rounded-pill" id="deleteVideoBtn">
+                    <i class="fas fa-trash me-1"></i> Xóa Video
                 </button>
             </div>
         </div>
@@ -96,22 +103,26 @@
 <!-- Delete Confirmation Modal -->
 <div class="modal fade" id="deleteConfirmModal" tabindex="-1">
     <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Xác nhận xóa</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title fw-bold">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Xác nhận xóa
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <p>Bạn có chắc chắn muốn xóa video này? Hành động này không thể hoàn tác.</p>
-                <div class="alert alert-warning">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    File video cũng sẽ bị xóa khỏi server.
+                <p class="mb-3">Bạn có chắc chắn muốn xóa video này không?</p>
+                <div class="alert alert-warning border-0">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Cảnh báo:</strong> Hành động này không thể hoàn tác và file video cũng sẽ bị xóa khỏi server.
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
-                    <i class="fas fa-trash"></i> Xóa
+                <button type="button" class="btn btn-secondary rounded-pill" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>Hủy
+                </button>
+                <button type="button" class="btn btn-danger rounded-pill" id="confirmDeleteBtn">
+                    <i class="fas fa-trash me-1"></i> Xác nhận xóa
                 </button>
             </div>
         </div>
@@ -122,21 +133,23 @@
 {% block extra_css %}
 <style>
 .video-card {
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    border: 1px solid #dee2e6;
-    border-radius: 0.5rem;
+    transition: all 0.3s ease;
+    border: none;
+    border-radius: 1rem;
     overflow: hidden;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
 }
 
 .video-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    transform: translateY(-8px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
 }
 
 .video-thumbnail {
     width: 100%;
     height: 200px;
-    background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -153,99 +166,118 @@
     transform: translate(-50%, -50%);
     background: rgba(0, 0, 0, 0.7);
     border-radius: 50%;
-    width: 60px;
-    height: 60px;
+    width: 70px;
+    height: 70px;
     display: flex;
     align-items: center;
     justify-content: center;
     color: white;
-    font-size: 1.5rem;
+    font-size: 1.8rem;
     cursor: pointer;
-    transition: background 0.2s ease;
+    transition: all 0.3s ease;
 }
 
 .video-thumbnail .play-overlay:hover {
     background: rgba(0, 0, 0, 0.9);
+    transform: translate(-50%, -50%) scale(1.1);
 }
 
 .video-status {
     position: absolute;
-    top: 10px;
-    right: 10px;
+    top: 15px;
+    right: 15px;
+    padding: 0.5rem 1rem;
+    border-radius: 2rem;
+    font-size: 0.8rem;
+    font-weight: 600;
 }
 
 .status-rendering {
-    background-color: #ffc107;
-    color: #212529;
+    background: linear-gradient(45deg, #fbbf24, #f59e0b);
+    color: white;
 }
 
 .status-completed {
-    background-color: #198754;
+    background: linear-gradient(45deg, #10b981, #059669);
     color: white;
 }
 
 .status-failed {
-    background-color: #dc3545;
+    background: linear-gradient(45deg, #ef4444, #dc2626);
     color: white;
 }
 
 .video-info {
-    padding: 1rem;
+    padding: 1.5rem;
 }
 
 .video-title {
     font-weight: 600;
     margin-bottom: 0.5rem;
-    color: #212529;
+    color: #1f2937;
+    font-size: 1.1rem;
 }
 
 .video-meta {
-    font-size: 0.875rem;
-    color: #6c757d;
-    margin-bottom: 0.5rem;
-}
-
-.video-topic {
+    color: #6b7280;
     font-size: 0.9rem;
-    color: #495057;
-    margin-bottom: 1rem;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
 }
 
 .video-actions {
-    display: flex;
-    gap: 0.5rem;
-    justify-content: flex-end;
+    padding: 1rem 1.5rem;
+    background: rgba(243, 244, 246, 0.5);
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.btn-video-action {
+    padding: 0.5rem 1rem;
+    border-radius: 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.btn-video-action:hover {
+    transform: translateY(-1px);
 }
 
 .empty-state {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 2rem;
+    padding: 4rem 2rem;
     text-align: center;
-    padding: 3rem;
-    color: #6c757d;
+    border: none;
 }
 
 .empty-state i {
     font-size: 4rem;
+    color: #9ca3af;
     margin-bottom: 1rem;
-    opacity: 0.5;
 }
 
-.loading-card {
-    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-    background-size: 200% 100%;
-    animation: loading 1.5s infinite;
+.pagination .page-link {
+    border-radius: 0.75rem;
+    margin: 0 0.25rem;
+    border: none;
+    background: rgba(255, 255, 255, 0.9);
+    color: #6b7280;
+    backdrop-filter: blur(10px);
 }
 
-@keyframes loading {
-    0% { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
+.pagination .page-link:hover {
+    background: linear-gradient(45deg, #6366f1, #8b5cf6);
+    color: white;
+    transform: translateY(-1px);
+}
+
+.pagination .page-item.active .page-link {
+    background: linear-gradient(45deg, #6366f1, #8b5cf6);
+    border: none;
 }
 </style>
 {% endblock %}
 
 {% block extra_js %}
-<script src="/static/js/videos.js"></script>
+<script src="{{ url_for('static', filename='js/videos.js') }}"></script>
 {% endblock %} 
