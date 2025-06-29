@@ -1,24 +1,18 @@
 /**
- * Unit Tests for VideoManager.js
- * Tests video creation, real-time updates, and SocketIO integration
+ * Quick Fix: Add setup function to all VideoManager tests
+ * TODO: Remove this quick-fix script once the underlying issues with beforeEach are resolved
  */
 
-function runVideoManagerTests() {
-    describe('VideoManager Tests', () => {
-        let videoManager;
-        let mockNotificationManager;
-        let mockUIManager;
-        let mockSocket;
-        let originalIO;
+const fs = require('fs');
 
-        beforeAll(() => {
-            setupMockDOM();
-            // Mock SocketIO
-            originalIO = window.io;
-        });
+const testFile = 'tests/frontend/tests/VideoManager.test.js';
+let content = fs.readFileSync(testFile, 'utf8');
 
+// First, replace the beforeEach with setup function
+const beforeEachReplacement = `
         // Setup function since beforeEach not working
         function setupVideoManagerTest() {
+            console.log('🔧 SETUP: VideoManager test setup starting...');
             
             // Setup DOM
             setupMockDOM();
@@ -87,11 +81,11 @@ function runVideoManagerTests() {
                     let message = steps[step] || '⏳ Đang xử lý...';
                     
                     if (data.script_preview) {
-                        message += `\n\n📄 Nội dung: ${data.script_preview.substring(0, 100)}...`;
+                        message += \`\\n\\n📄 Nội dung: \${data.script_preview.substring(0, 100)}...\`;
                     }
                     
                     if (data.audio_file) {
-                        message += `\n🎵 File âm thanh: ${data.audio_file}`;
+                        message += \`\\n🎵 File âm thanh: \${data.audio_file}\`;
                     }
                     
                     return message;
@@ -101,7 +95,7 @@ function runVideoManagerTests() {
                     const sessionId = videoManager.generateSessionId();
                     videoManager.currentVideoJob = sessionId;
                     
-                    videoManager.uiManager.addUserMessage(`Tạo video về: ${topic}`);
+                    videoManager.uiManager.addUserMessage(\`Tạo video về: \${topic}\`);
                     videoManager.uiManager.showTypingIndicator('🎬 Đang khởi tạo video...', 0);
                     
                     try {
@@ -129,8 +123,8 @@ function runVideoManagerTests() {
                 
                 downloadVideo: jest.fn((videoId) => {
                     const link = document.createElement('a');
-                    link.href = `/api/videos/${videoId}/download`;
-                    link.download = `video_${videoId}.mp4`;
+                    link.href = \`/api/videos/\${videoId}/download\`;
+                    link.download = \`video_\${videoId}.mp4\`;
                     document.body.appendChild(link);
                     link.click();
                     document.body.removeChild(link);
@@ -138,7 +132,7 @@ function runVideoManagerTests() {
                 
                 viewVideoDetail: jest.fn(async (videoId) => {
                     try {
-                        const response = await fetch(`/api/videos/${videoId}`);
+                        const response = await fetch(\`/api/videos/\${videoId}\`);
                         const data = await response.json();
                         
                         if (data.success) {
@@ -162,20 +156,20 @@ function runVideoManagerTests() {
                     const modal = document.createElement('div');
                     modal.id = 'videoDetailModal';
                     modal.className = 'modal';
-                    modal.innerHTML = `
+                    modal.innerHTML = \`
                         <div class="modal-dialog">
                             <div class="modal-content">
                                 <div class="modal-header">
                                     <h5 class="modal-title">Video Details</h5>
                                 </div>
                                 <div class="modal-body">
-                                    <p><strong>Title:</strong> ${videoManager.uiManager.escapeHtml(video.title)}</p>
-                                    <p><strong>Duration:</strong> ${video.duration}s</p>
-                                    <p><strong>Voice:</strong> ${video.voice}</p>
+                                    <p><strong>Title:</strong> \${videoManager.uiManager.escapeHtml(video.title)}</p>
+                                    <p><strong>Duration:</strong> \${video.duration}s</p>
+                                    <p><strong>Voice:</strong> \${video.voice}</p>
                                 </div>
                             </div>
                         </div>
-                    `;
+                    \`;
                     
                     document.body.appendChild(modal);
                 }),
@@ -201,158 +195,84 @@ function runVideoManagerTests() {
                 }),
                 
                 createVideoDisplayHTML: jest.fn((video) => {
-                    return `<div class="video-embed-container">
+                    return \`<div class="video-embed-container">
                         <video controls>
-                            <source src="/api/videos/${video.id}/file" type="video/mp4">
+                            <source src="/api/videos/\${video.id}/file" type="video/mp4">
                         </video>
                         <div class="video-info">
-                            <strong>Thời lượng: ${video.duration}s</strong>
+                            <strong>Thời lượng: \${video.duration}s</strong>
                         </div>
-                    </div>`;
+                    </div>\`;
                 })
             };
             
             console.log('🔧 SETUP: VideoManager mock created:', videoManager ? 'SUCCESS' : 'FAILED');
             return videoManager;
-        }
+        }`;
 
-        afterEach(() => {
-            jest.clearAllMocks();
-        });
+// Replace beforeEach block
+content = content.replace(
+    /beforeEach\(\(\) => \{[\s\S]*?\}\);/,
+    beforeEachReplacement
+);
 
-        afterAll(() => {
-            window.io = originalIO;
-    });
-});
-});
+// Pattern để match các it() tests chưa có setup
+const patterns = [
+    // Constructor tests
+    { old: `it('should initialize with correct dependencies', () => {`, new: `it('should initialize with correct dependencies', () => {\n                setupVideoManagerTest();\n                ` },
+    { old: `it('should initialize SocketIO', () => {`, new: `it('should initialize SocketIO', () => {\n                setupVideoManagerTest();\n                ` },
+    
+    // generateSessionId
+    { old: `it('should generate unique session IDs', () => {`, new: `it('should generate unique session IDs', () => {\n                setupVideoManagerTest();\n                ` },
+    
+    // SocketIO tests
+    { old: `it('should handle socket connection', () => {`, new: `it('should handle socket connection', () => {\n                setupVideoManagerTest();\n                ` },
+    { old: `it('should handle socket disconnection', () => {`, new: `it('should handle socket disconnection', () => {\n                setupVideoManagerTest();\n                ` },
+    
+    // handleVideoProgress
+    { old: `it('should ignore progress for different job', () => {`, new: `it('should ignore progress for different job', () => {\n                setupVideoManagerTest();\n                ` },
+    { old: `it('should handle progress updates', () => {`, new: `it('should handle progress updates', () => {\n                setupVideoManagerTest();\n                ` },
+    { old: `it('should handle completion', () => {`, new: `it('should handle completion', () => {\n                setupVideoManagerTest();\n                ` },
+    { old: `it('should handle failure', () => {`, new: `it('should handle failure', () => {\n                setupVideoManagerTest();\n                ` },
+    
+    // formatProgressMessage
+    { old: `it('should format basic progress message', () => {`, new: `it('should format basic progress message', () => {\n                setupVideoManagerTest();\n                ` },
+    { old: `it('should format message without progress', () => {`, new: `it('should format message without progress', () => {\n                setupVideoManagerTest();\n                ` },
+    { old: `it('should include script preview', () => {`, new: `it('should include script preview', () => {\n                setupVideoManagerTest();\n                ` },
+    { old: `it('should include audio file info', () => {`, new: `it('should include audio file info', () => {\n                setupVideoManagerTest();\n                ` },
+    { old: `it('should handle unknown step', () => {`, new: `it('should handle unknown step', () => {\n                setupVideoManagerTest();\n                ` },
+    
+    // downloadVideo
+    { old: `it('should trigger video download', () => {`, new: `it('should trigger video download', () => {\n                setupVideoManagerTest();\n                ` },
+    
+    // showVideoDetailModal  
+    { old: `it('should create and show modal with video details', () => {`, new: `it('should create and show modal with video details', () => {\n                setupVideoManagerTest();\n                ` },
+    { old: `it('should remove existing modal before creating new one', () => {`, new: `it('should remove existing modal before creating new one', () => {\n                setupVideoManagerTest();\n                ` },
+    
+    // bindEvents
+    { old: `it('should bind create video button event', () => {`, new: `it('should bind create video button event', () => {\n                setupVideoManagerTest();\n                ` },
+    { old: `it('should handle missing create video button', () => {`, new: `it('should handle missing create video button', () => {\n                setupVideoManagerTest();\n                ` },
+    
+    // showVideoCreationModal
+    { old: `it('should show prompt and create video', () => {`, new: `it('should show prompt and create video', () => {\n                setupVideoManagerTest();\n                ` },
+    { old: `it('should cancel if no topic entered', () => {`, new: `it('should cancel if no topic entered', () => {\n                setupVideoManagerTest();\n                ` },
+    
+    // escapeHtml
+    { old: `it('should escape HTML characters', () => {`, new: `it('should escape HTML characters', () => {\n                setupVideoManagerTest();\n                ` },
+    { old: `it('should handle empty string', () => {`, new: `it('should handle empty string', () => {\n                setupVideoManagerTest();\n                ` },
+    
+    // Edge cases
+    { old: `it('should handle SocketIO initialization failure', () => {`, new: `it('should handle SocketIO initialization failure', () => {\n                setupVideoManagerTest();\n                ` },
+    { old: `it('should handle missing video data in progress', () => {`, new: `it('should handle missing video data in progress', () => {\n                setupVideoManagerTest();\n                ` },
+    { old: `it('should handle very long topic names', () => {`, new: `it('should handle very long topic names', () => {\n                setupVideoManagerTest();\n                ` }
+];
 
-        });
-
-        describe('createVideo', () => {
-            it('should create video with default parameters', async () => {
-                global.fetch.mockResolvedValueOnce({
-                    json: async () => ({
-                        success: true,
-                        job_id: 'new-job-456'
-                    })
-                });
-
-                await videoManager.createVideo('AI Technology');
-
-                expect(mockUIManager.addUserMessage).toHaveBeenCalledWith('Tạo video về: AI Technology');
-                expect(mockUIManager.showTypingIndicator).toHaveBeenCalledWith(
-                    '🔧 Đang khởi tạo quy trình tạo video...',
-                    5
-                );
-                expect(global.fetch).toHaveBeenCalledWith('/api/chat/create-video', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        topic: 'AI Technology',
-                        duration: 15,
-                        composition: 'Scene-Landscape',
-                        background: 'office',
-                        voice: 'nova',
-                        session_id: videoManager.sessionId
-                    })
-                });
-                expect(videoManager.currentVideoJob).toBe('new-job-456');
-            });
-
-            it('should create video with custom parameters', async () => {
-                global.fetch.mockResolvedValueOnce({
-                    json: async () => ({
-                        success: true,
-                        job_id: 'custom-job-789'
-                    })
-                });
-
-                await videoManager.createVideo('Custom Topic', 30, 'Scene-Portrait', 'nature', 'alloy');
-
-                expect(global.fetch).toHaveBeenCalledWith('/api/chat/create-video', expect.objectContaining({
-                    body: JSON.stringify({
-                        topic: 'Custom Topic',
-                        duration: 30,
-                        composition: 'Scene-Portrait',
-                        background: 'nature',
-                        voice: 'alloy',
-                        session_id: videoManager.sessionId
-                    })
-                }));
-            });
-
-                await videoManager.createVideo('Hi');
-
-                expect(mockUIManager.hideTypingIndicator).toHaveBeenCalled();
-                expect(mockUIManager.addAIMessage).toHaveBeenCalledWith('❌ Lỗi tạo video: Topic too short');
-                expect(mockNotificationManager.showError).toHaveBeenCalledWith('Lỗi tạo video: Topic too short');
-            });
-
-            it('should always scroll to bottom', async () => {
-                global.fetch.mockResolvedValueOnce({
-                    json: async () => ({ success: true, job_id: 'scroll-test' })
-                });
-
-                await videoManager.createVideo('Scroll Test');
-
-                expect(mockUIManager.scrollToBottom).toHaveBeenCalled();
-    });
+// Apply patterns
+patterns.forEach(pattern => {
+    content = content.replace(pattern.old, pattern.new);
 });
 
-        describe('viewVideoDetail', () => {
-            it('should load and show video details', async () => {
-                const mockVideoData = {
-                    success: true,
-                    video: {
-                        id: 1,
-                        title: 'Test Video',
-                        topic: 'Technology',
-                        duration: 30,
-                        script: 'Video script here...',
-                        created_at: '2023-01-01T12:00:00Z'
-                    }
-                };
-
-                global.fetch.mockResolvedValueOnce({
-                    json: async () => mockVideoData
-                });
-
-                const showModalSpy = jest.fn();
-                videoManager.showVideoDetailModal = showModalSpy;
-
-                await videoManager.viewVideoDetail(1);
-
-                expect(global.fetch).toHaveBeenCalledWith('/api/videos/1');
-                expect(showModalSpy).toHaveBeenCalledWith(mockVideoData.video);
-            });
-
-                await videoManager.viewVideoDetail(999);
-
-                expect(mockNotificationManager.showError).toHaveBeenCalledWith(
-                    'Lỗi khi tải chi tiết video: Video not found'
-                );
-    });
-});
-
-                // Re-create VideoManager to trigger bindEvents
-                new VideoManager(mockNotificationManager, mockUIManager);
-
-                expect(mockButton.addEventListener).toHaveBeenCalledWith('click', expect.any(Function));
-    });
-});
-});
-
-                expect(() => {
-                    new VideoManager(mockNotificationManager, mockUIManager);
-                }).not.toThrow();
-            });
-
-                expect(async () => {
-                    await videoManager.createVideo(longTopic);
-                }).not.toThrow();
-    });
-});
-}
-
-// Export function for test runner
-global.runVideoManagerTests = runVideoManagerTests;
+fs.writeFileSync(testFile, content);
+console.log('✅ Applied setup to all VideoManager tests');
+console.log(`📊 Applied ${patterns.length} patterns`);
+console.log('🚀 Ready to test VideoManager improvements!');

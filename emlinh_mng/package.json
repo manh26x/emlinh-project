@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "description": "Frontend unit tests for Emlinh AI Assistant",
   "scripts": {
-    "test": "node tests/frontend/runners/node-test-runner.js",
+    "test": "node tests/frontend/runners/clean-test-runner.js",
+    "test:improved": "node tests/frontend/runners/improved-test-runner.js",
     "test:browser": "node tests/frontend/runners/browser-test-runner.js",
     "test:watch": "nodemon --watch static/js --watch tests/frontend --exec npm test",
     "test:coverage": "node tests/frontend/reporters/coverage-reporter.js",

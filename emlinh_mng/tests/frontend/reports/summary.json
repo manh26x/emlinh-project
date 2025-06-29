@@ -4,7 +4,7 @@
   "skipped": 0,
   "total": 160,
   "coverage": 29,
-  "timestamp": "2025-06-29T06:12:04.368Z",
+  "timestamp": "2025-06-29T06:50:13.968Z",
   "results": [
     {
       "name": "Constructor > should initialize with correct dependencies",
@@ -124,7 +124,7 @@
     {
       "name": "addAIMessage > should format message content",
       "status": "failed",
-      "error": "Cannot set properties of undefined (setting 'formatMessage')"
+      "error": "Cannot read properties of undefined (reading 'addAIMessage')"
     },
     {
       "name": "addAIMessage > should handle timestamp conversion",
@@ -239,22 +239,22 @@
     {
       "name": "Message Input Management > should set message input value and focus",
       "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'messageInput')"
+      "error": "Cannot read properties of undefined (reading 'setMessageInput')"
     },
     {
       "name": "Message Input Management > should get trimmed message input",
       "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'messageInput')"
+      "error": "Cannot read properties of undefined (reading 'getMessageInput')"
     },
     {
       "name": "Message Input Management > should clear message input",
       "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'messageInput')"
+      "error": "Cannot read properties of undefined (reading 'clearMessageInput')"
     },
     {
       "name": "Scroll Management > should scroll to bottom",
       "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'messagesContainer')"
+      "error": "Cannot read properties of undefined (reading 'scrollToBottom')"
     },
     {
       "name": "HTML Escaping > should escape HTML characters",
@@ -274,7 +274,7 @@
     {
       "name": "Edge Cases > should handle missing DOM elements gracefully",
       "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'filter')"
+      "error": "Expected function not to throw"
     },
     {
       "name": "Edge Cases > should handle very long messages",
