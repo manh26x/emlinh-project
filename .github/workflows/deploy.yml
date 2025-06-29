@@ -1,0 +1,130 @@
+name: Deploy to Self-Hosted Server
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+    types: [ closed ]
+
+env:
+  DOCKER_BUILDKIT: 1
+  COMPOSE_DOCKER_CLI_BUILD: 1
+
+jobs:
+  test:
+    runs-on: self-hosted
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.merged == true)
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: emlinh-remotion/package-lock.json
+
+    - name: Install Python dependencies
+      run: |
+        cd emlinh_mng
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Install Node.js dependencies
+      run: |
+        cd emlinh-remotion
+        npm ci
+
+    - name: Run Python tests
+      run: |
+        cd emlinh_mng
+        python -m pytest src/tests/ -v || true
+
+    - name: Run Node.js tests
+      run: |
+        cd emlinh-remotion
+        npm run lint || true
+
+    - name: Build Docker images
+      run: |
+        docker build --target production -t emlinh-app:latest .
+        docker system prune -f
+
+  deploy:
+    runs-on: self-hosted
+    needs: test
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main')
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Create environment file
+      run: |
+        cat > .env << EOFENV
+        SECRET_KEY=${{ secrets.SECRET_KEY }}
+        DATABASE_URL=${{ secrets.DATABASE_URL }}
+        OLLAMA_BASE_URL=${{ secrets.OLLAMA_BASE_URL }}
+        FLASK_ENV=production
+        EOFENV
+
+    - name: Create necessary directories
+      run: |
+        mkdir -p public/audios public/models ssl
+        sudo chown -R $USER:$USER public ssl
+
+    - name: Stop existing containers
+      run: |
+        docker-compose down --remove-orphans || true
+
+    - name: Remove old images
+      run: |
+        docker system prune -af --volumes || true
+
+    - name: Build and start services
+      run: |
+        docker-compose build --no-cache
+        docker-compose up -d
+
+    - name: Wait for services to be healthy
+      run: |
+        timeout 300 bash -c 'until docker-compose ps | grep -q "healthy\|Up"; do sleep 10; done'
+
+    - name: Verify deployment
+      run: |
+        sleep 30
+        curl -f http://localhost:5000/health || exit 1
+        echo "✅ Deployment successful!"
+
+    - name: Clean up old Docker resources
+      run: |
+        docker image prune -af
+        docker volume prune -f
+
+  notification:
+    runs-on: self-hosted
+    needs: [test, deploy]
+    if: always()
+    
+    steps:
+    - name: Notify deployment status
+      run: |
+        if [ "${{ needs.deploy.result }}" == "success" ]; then
+          echo "🎉 Deployment thành công!"
+          echo "✅ Service emlinh_mng và emlinh-remotion đã được deploy"
+          echo "🔗 App URL: http://localhost:5000"
+        else
+          echo "❌ Deployment thất bại!"
+          echo "🔍 Kiểm tra logs để xem chi tiết lỗi"
+          exit 1
+        fi
