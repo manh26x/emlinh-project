@@ -270,4 +270,9 @@ class UIManager {
         div.textContent = text;
         return div.innerHTML;
     }
+}
+
+// Export for test environment
+if (typeof global !== 'undefined') {
+    global.UIManager = UIManager;
 } 

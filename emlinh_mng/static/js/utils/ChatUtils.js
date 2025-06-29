@@ -164,4 +164,9 @@ class ChatUtils {
 window.copyToClipboard = ChatUtils.copyToClipboard;
 window.exportChat = ChatUtils.exportChat;
 window.reprocessMessages = ChatUtils.reprocessMessages;
-window.addTestVideoMessage = ChatUtils.addTestVideoMessage; 
+window.addTestVideoMessage = ChatUtils.addTestVideoMessage;
+
+// Export for test environment
+if (typeof global !== 'undefined') {
+    global.ChatUtils = ChatUtils;
+} 

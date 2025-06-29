@@ -37,4 +37,9 @@ class SessionManager {
         
         return this.sessionId;
     }
+}
+
+// Export for test environment
+if (typeof global !== 'undefined') {
+    global.SessionManager = SessionManager;
 } 

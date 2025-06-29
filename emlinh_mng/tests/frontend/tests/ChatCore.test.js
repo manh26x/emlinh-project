@@ -47,8 +47,20 @@ function runChatCoreTests() {
             originalFetch = global.fetch;
             global.fetch = jest.fn();
 
-            // Create ChatCore instance
-            chatCore = new ChatCore(mockSessionManager, mockUIManager, mockNotificationManager);
+            // Create ChatCore instance using global reference
+            if (typeof global.ChatCore !== 'undefined') {
+                console.log('🔧 Creating ChatCore instance...');
+                try {
+                    chatCore = new global.ChatCore(mockSessionManager, mockUIManager, mockNotificationManager);
+                    console.log('✅ ChatCore instance created successfully');
+                } catch (error) {
+                    console.error('❌ Error creating ChatCore instance:', error.message);
+                    chatCore = null;
+                }
+            } else {
+                console.warn('ChatCore class not available for testing');
+                chatCore = null;
+            }
         });
 
         afterEach(() => {
@@ -58,6 +70,7 @@ function runChatCoreTests() {
 
         describe('Constructor', () => {
             it('should initialize with correct dependencies', () => {
+                expect(chatCore).toBeTruthy();
                 expect(chatCore.sessionManager).toBe(mockSessionManager);
                 expect(chatCore.uiManager).toBe(mockUIManager);
                 expect(chatCore.notificationManager).toBe(mockNotificationManager);
@@ -340,4 +353,4 @@ function runChatCoreTests() {
 }
 
 // Export function for test runner
-window.runChatCoreTests = runChatCoreTests;
+global.runChatCoreTests = runChatCoreTests;

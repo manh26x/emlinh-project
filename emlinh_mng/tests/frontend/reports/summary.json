@@ -1,0 +1,810 @@
+{
+  "passed": 46,
+  "failed": 114,
+  "skipped": 0,
+  "total": 160,
+  "coverage": 29,
+  "timestamp": "2025-06-29T06:12:04.368Z",
+  "results": [
+    {
+      "name": "Constructor > should initialize with correct dependencies",
+      "status": "failed",
+      "error": "Expected undefined to be truthy"
+    },
+    {
+      "name": "sendMessage > should not send empty messages",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "name": "sendMessage > should not send messages when loading",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "name": "sendMessage > should send valid messages successfully",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "name": "sendMessage > should handle JSON video response",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "name": "sendMessage > should handle video creation redirect",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "name": "sendMessage > should handle API errors gracefully",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "name": "sendMessage > should handle network errors",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "name": "sendMessage > should handle idea creation notification",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "name": "setMessageType > should set message type and update UI",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'setMessageType')"
+    },
+    {
+      "name": "useQuickPrompt > should set message type and input, then auto-send",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "name": "setLoading > should update loading state",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'setLoading')"
+    },
+    {
+      "name": "createVideoDisplayHTML > should create proper video HTML",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'createVideoDisplayHTML')"
+    },
+    {
+      "name": "truncateText > should truncate long text",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'truncateText')"
+    },
+    {
+      "name": "truncateText > should not truncate short text",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'truncateText')"
+    },
+    {
+      "name": "Edge Cases > should handle invalid JSON in AI response",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "name": "Edge Cases > should handle empty message input after trim",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "name": "Edge Cases > should handle concurrent message sending",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "name": "Constructor > should initialize DOM elements correctly",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'chatForm')"
+    },
+    {
+      "name": "addUserMessage > should add user message with correct format",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'addUserMessage')"
+    },
+    {
+      "name": "addUserMessage > should escape HTML in user messages",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'addUserMessage')"
+    },
+    {
+      "name": "addUserMessage > should include timestamp",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'addUserMessage')"
+    },
+    {
+      "name": "addAIMessage > should add AI message with correct format",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'addAIMessage')"
+    },
+    {
+      "name": "addAIMessage > should format message content",
+      "status": "failed",
+      "error": "Cannot set properties of undefined (setting 'formatMessage')"
+    },
+    {
+      "name": "addAIMessage > should handle timestamp conversion",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'addAIMessage')"
+    },
+    {
+      "name": "addAIMessageWithVideo > should add AI message with video content",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'addAIMessageWithVideo')"
+    },
+    {
+      "name": "formatMessage > should convert line breaks to <br>",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'formatMessage')"
+    },
+    {
+      "name": "formatMessage > should format bold text",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'formatMessage')"
+    },
+    {
+      "name": "formatMessage > should format italic text",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'formatMessage')"
+    },
+    {
+      "name": "formatMessage > should format code text",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'formatMessage')"
+    },
+    {
+      "name": "formatMessage > should detect and embed video ID patterns",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'formatMessage')"
+    },
+    {
+      "name": "formatMessage > should extract video title from message",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'formatMessage')"
+    },
+    {
+      "name": "formatMessage > should not embed video when no ID found",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'formatMessage')"
+    },
+    {
+      "name": "showError > should display error message as AI message",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'showError')"
+    },
+    {
+      "name": "clearChat > should clear all chat messages",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'addUserMessage')"
+    },
+    {
+      "name": "addWelcomeMessage > should add welcome message with features list",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'addWelcomeMessage')"
+    },
+    {
+      "name": "Typing Indicator > should show typing indicator",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'showTypingIndicator')"
+    },
+    {
+      "name": "Typing Indicator > should show typing indicator with custom message",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'showTypingIndicator')"
+    },
+    {
+      "name": "Typing Indicator > should update typing indicator with progress",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'showTypingIndicator')"
+    },
+    {
+      "name": "Typing Indicator > should hide typing indicator",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'showTypingIndicator')"
+    },
+    {
+      "name": "Typing Indicator > should handle typing indicator with line breaks",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'updateTypingIndicator')"
+    },
+    {
+      "name": "Loading State > should set loading state on send button and input",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'setLoadingState')"
+    },
+    {
+      "name": "Loading State > should clear loading state",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'setLoadingState')"
+    },
+    {
+      "name": "Chat Type UI > should update placeholder for conversation type",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'updateChatTypeUI')"
+    },
+    {
+      "name": "Chat Type UI > should update placeholder for brainstorm type",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'updateChatTypeUI')"
+    },
+    {
+      "name": "Chat Type UI > should update placeholder for planning type",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'updateChatTypeUI')"
+    },
+    {
+      "name": "Message Input Management > should set message input value and focus",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'messageInput')"
+    },
+    {
+      "name": "Message Input Management > should get trimmed message input",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'messageInput')"
+    },
+    {
+      "name": "Message Input Management > should clear message input",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'messageInput')"
+    },
+    {
+      "name": "Scroll Management > should scroll to bottom",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'messagesContainer')"
+    },
+    {
+      "name": "HTML Escaping > should escape HTML characters",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'escapeHtml')"
+    },
+    {
+      "name": "HTML Escaping > should handle empty string",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'escapeHtml')"
+    },
+    {
+      "name": "HTML Escaping > should handle null and undefined",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'escapeHtml')"
+    },
+    {
+      "name": "Edge Cases > should handle missing DOM elements gracefully",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'filter')"
+    },
+    {
+      "name": "Edge Cases > should handle very long messages",
+      "status": "failed",
+      "error": "Expected function not to throw"
+    },
+    {
+      "name": "Edge Cases > should handle special characters in messages",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'addUserMessage')"
+    },
+    {
+      "name": "Constructor > should initialize with toast container",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'toastContainer')"
+    },
+    {
+      "name": "Constructor > should create toast container if not exists",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "name": "showNotification > should create and show toast with correct structure",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'showNotification')"
+    },
+    {
+      "name": "showNotification > should default to info type",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'showNotification')"
+    },
+    {
+      "name": "showNotification > should set ARIA attributes",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'showNotification')"
+    },
+    {
+      "name": "showNotification > should trigger Bootstrap toast show",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'showNotification')"
+    },
+    {
+      "name": "showNotification > should auto-remove toast after hidden event",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'showNotification')"
+    },
+    {
+      "name": "showSuccess > should show success notification",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'showSuccess')"
+    },
+    {
+      "name": "showError > should show error notification",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'showError')"
+    },
+    {
+      "name": "showWarning > should show warning notification",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'showWarning')"
+    },
+    {
+      "name": "showInfo > should show info notification",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'showInfo')"
+    },
+    {
+      "name": "Multiple Notifications > should handle multiple notifications",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'showSuccess')"
+    },
+    {
+      "name": "Multiple Notifications > should maintain order of notifications",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'showInfo')"
+    },
+    {
+      "name": "HTML Content Handling > should display HTML content in messages",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'showInfo')"
+    },
+    {
+      "name": "HTML Content Handling > should handle special characters",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'showInfo')"
+    },
+    {
+      "name": "Toast Positioning > should position toast container correctly",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'className')"
+    },
+    {
+      "name": "Bootstrap Integration > should handle missing Bootstrap gracefully",
+      "status": "failed",
+      "error": "Expected function not to throw"
+    },
+    {
+      "name": "Bootstrap Integration > should use Bootstrap classes correctly",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'showNotification')"
+    },
+    {
+      "name": "Close Button Functionality > should include close button with correct attributes",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'showNotification')"
+    },
+    {
+      "name": "Close Button Functionality > should trigger close when button clicked",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'showNotification')"
+    },
+    {
+      "name": "Edge Cases > should handle empty messages",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'showNotification')"
+    },
+    {
+      "name": "Edge Cases > should handle null messages",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'showNotification')"
+    },
+    {
+      "name": "Edge Cases > should handle undefined type",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'showNotification')"
+    },
+    {
+      "name": "Edge Cases > should handle very long messages",
+      "status": "failed",
+      "error": "Expected function not to throw"
+    },
+    {
+      "name": "Edge Cases > should handle invalid notification types",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'showNotification')"
+    },
+    {
+      "name": "Cleanup > should properly clean up event listeners",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'showNotification')"
+    },
+    {
+      "name": "Constructor > should initialize with correct dependencies",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'notificationManager')"
+    },
+    {
+      "name": "Constructor > should initialize SocketIO",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'mock')"
+    },
+    {
+      "name": "generateSessionId > should generate unique session IDs",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'generateSessionId')"
+    },
+    {
+      "name": "SocketIO Integration > should handle socket connection",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'on')"
+    },
+    {
+      "name": "SocketIO Integration > should handle socket disconnection",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'on')"
+    },
+    {
+      "name": "handleVideoProgress > should ignore progress for different job",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'handleVideoProgress')"
+    },
+    {
+      "name": "handleVideoProgress > should handle progress updates",
+      "status": "failed",
+      "error": "Cannot set properties of undefined (setting 'formatProgressMessage')"
+    },
+    {
+      "name": "handleVideoProgress > should handle completion",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'handleVideoProgress')"
+    },
+    {
+      "name": "handleVideoProgress > should handle failure",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'handleVideoProgress')"
+    },
+    {
+      "name": "formatProgressMessage > should format basic progress message",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'formatProgressMessage')"
+    },
+    {
+      "name": "formatProgressMessage > should format message without progress",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'formatProgressMessage')"
+    },
+    {
+      "name": "formatProgressMessage > should include script preview",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'formatProgressMessage')"
+    },
+    {
+      "name": "formatProgressMessage > should include audio file info",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'formatProgressMessage')"
+    },
+    {
+      "name": "formatProgressMessage > should handle unknown step",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'formatProgressMessage')"
+    },
+    {
+      "name": "createVideo > should create video with default parameters",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "name": "createVideo > should create video with custom parameters",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "name": "createVideo > should handle API errors",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "name": "createVideo > should handle network errors",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "name": "createVideo > should always scroll to bottom",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "name": "downloadVideo > should trigger video download",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'downloadVideo')"
+    },
+    {
+      "name": "viewVideoDetail > should load and show video details",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "name": "viewVideoDetail > should handle API errors when loading video details",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "name": "viewVideoDetail > should handle network errors when loading video details",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "name": "showVideoDetailModal > should create and show modal with video details",
+      "status": "failed",
+      "error": "Cannot set properties of undefined (setting 'escapeHtml')"
+    },
+    {
+      "name": "showVideoDetailModal > should remove existing modal before creating new one",
+      "status": "failed",
+      "error": "document.getElementById.mockReturnValueOnce is not a function"
+    },
+    {
+      "name": "bindEvents > should bind create video button event",
+      "status": "failed",
+      "error": "Expected function to have been called with [\"click\",{}]"
+    },
+    {
+      "name": "bindEvents > should handle missing create video button",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "name": "showVideoCreationModal > should show prompt and create video",
+      "status": "failed",
+      "error": "Cannot set properties of undefined (setting 'createVideo')"
+    },
+    {
+      "name": "showVideoCreationModal > should cancel if no topic entered",
+      "status": "failed",
+      "error": "Cannot set properties of undefined (setting 'createVideo')"
+    },
+    {
+      "name": "escapeHtml > should escape HTML characters",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'escapeHtml')"
+    },
+    {
+      "name": "escapeHtml > should handle empty string",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'escapeHtml')"
+    },
+    {
+      "name": "Edge Cases > should handle SocketIO initialization failure",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "name": "Edge Cases > should handle missing video data in progress",
+      "status": "failed",
+      "error": "Cannot set properties of undefined (setting 'currentVideoJob')"
+    },
+    {
+      "name": "Edge Cases > should handle very long topic names",
+      "status": "failed",
+      "error": "global.fetch.mockResolvedValueOnce is not a function"
+    },
+    {
+      "name": "copyToClipboard > should copy text to clipboard successfully",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "name": "copyToClipboard > should handle clipboard API errors",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "name": "copyToClipboard > should work without chatManager",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "name": "exportChat > should export chat messages to JSON file",
+      "status": "failed",
+      "error": "Expected function to have been called with [[\"[\\n  {\\n    \\\"type\\\": \\\"user\\\",\\n    \\\"content\\\": \\\"User message 1\\\",\\n    \\\"timestamp\\\": \\\"12:34:56\\\"\\n  },\\n  {\\n    \\\"type\\\": \\\"ai\\\",\\n    \\\"content\\\": \\\"AI response 1\\\",\\n    \\\"timestamp\\\": \\\"12:35:01\\\"\\n  },\\n  {\\n    \\\"type\\\": \\\"user\\\",\\n    \\\"content\\\": \\\"User message 2\\\",\\n    \\\"timestamp\\\": \\\"12:35:30\\\"\\n  }\\n]\"],{\"type\":\"application/json\"}]"
+    },
+    {
+      "name": "exportChat > should handle export with no messages",
+      "status": "failed",
+      "error": "Expected function to have been called with [[\"[]\"],{\"type\":\"application/json\"}]"
+    },
+    {
+      "name": "exportChat > should work without chatManager",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "name": "reprocessMessages > should reprocess messages and add video embeds",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'uiManager')"
+    },
+    {
+      "name": "reprocessMessages > should handle no video messages found",
+      "status": "failed",
+      "error": "Expected undefined to be 0"
+    },
+    {
+      "name": "reprocessMessages > should handle missing UIManager",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'notificationManager')"
+    },
+    {
+      "name": "reprocessMessages > should not reprocess already embedded videos",
+      "status": "failed",
+      "error": "Expected undefined to be 1"
+    },
+    {
+      "name": "escapeHtml > should escape HTML characters",
+      "status": "failed",
+      "error": "Expected <div class=\"video-embed-container\">Already embedded</div> to be &lt;script&gt;alert(\"xss\")&lt;/script&gt;&amp;&lt;&gt;\"'"
+    },
+    {
+      "name": "escapeHtml > should handle empty string",
+      "status": "failed",
+      "error": "Expected <div class=\"video-embed-container\">Already embedded</div> to be "
+    },
+    {
+      "name": "escapeHtml > should handle normal text",
+      "status": "failed",
+      "error": "Expected <div class=\"video-embed-container\">Already embedded</div> to be Normal text"
+    },
+    {
+      "name": "formatTimestamp > should format ISO timestamp to Vietnamese time",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "name": "formatTimestamp > should return current time for null timestamp",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "name": "formatTimestamp > should return current time for undefined timestamp",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "name": "generateRandomId > should generate random ID with prefix",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "name": "generateRandomId > should generate random ID with default prefix",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "name": "generateRandomId > should generate unique IDs",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "name": "debounce > should debounce function calls",
+      "status": "failed",
+      "error": "Expected function to have been called 1 times, but was called 0 times"
+    },
+    {
+      "name": "debounce > should reset timer on new calls",
+      "status": "failed",
+      "error": "Expected function to have been called 1 times, but was called 0 times"
+    },
+    {
+      "name": "throttle > should throttle function calls",
+      "status": "failed",
+      "error": "Expected function to have been called 2 times, but was called 1 times"
+    },
+    {
+      "name": "throttle > should ignore calls during throttle period",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "name": "addTestVideoMessage > should add test video message",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'uiManager')"
+    },
+    {
+      "name": "addTestVideoMessage > should handle missing chatManager",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "name": "Global Function Exports > should export functions to global scope",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "name": "Edge Cases > should handle DOM manipulation errors gracefully",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "name": "Edge Cases > should handle missing DOM elements in exportChat",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "name": "Edge Cases > should handle invalid timestamp formats",
+      "status": "failed",
+      "error": "Expected Invalid Date to match /\\d{1,2}:\\d{2}:\\d{2}/"
+    },
+    {
+      "name": "Edge Cases > should handle very large debounce/throttle delays",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "name": "Complete Chat Flow > should handle full conversation workflow",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "name": "Complete Chat Flow > should handle video creation request workflow",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "name": "Error Handling Integration > should handle API errors gracefully across components",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "name": "Video Manager Integration > should integrate video creation with chat",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "name": "Utility Functions Integration > should integrate chat export with real chat data",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'addUserMessage')"
+    },
+    {
+      "name": "State Management > should maintain consistent state across components",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'setLoading')"
+    },
+    {
+      "name": "State Management > should handle message type changes",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'setMessageType')"
+    },
+    {
+      "name": "API Health Check > should verify /api/chat/send endpoint format",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "name": "API Health Check > should verify /health endpoint accessibility",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "name": "Real-time Updates Integration > should handle video progress updates",
+      "status": "failed",
+      "error": "Cannot set properties of undefined (setting 'currentVideoJob')"
+    },
+    {
+      "name": "Edge Cases Integration > should handle multiple simultaneous operations",
+      "status": "passed",
+      "error": null
+    },
+    {
+      "name": "Edge Cases Integration > should recover from component failures",
+      "status": "failed",
+      "error": "Expected function not to throw"
+    },
+    {
+      "name": "Performance Integration > should handle large message volumes",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'addUserMessage')"
+    },
+    {
+      "name": "Performance Integration > should handle debounced operations correctly",
+      "status": "failed",
+      "error": "Expected function to have been called 1 times, but was called 0 times"
+    }
+  ]
+}

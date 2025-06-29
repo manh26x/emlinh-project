@@ -336,4 +336,4 @@ function runIntegrationTests() {
 }
 
 // Export function for test runner
-window.runIntegrationTests = runIntegrationTests;
+global.runIntegrationTests = runIntegrationTests;

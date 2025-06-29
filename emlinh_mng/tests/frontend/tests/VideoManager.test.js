@@ -563,4 +563,4 @@ function runVideoManagerTests() {
 }
 
 // Export function for test runner
-window.runVideoManagerTests = runVideoManagerTests;
+global.runVideoManagerTests = runVideoManagerTests;

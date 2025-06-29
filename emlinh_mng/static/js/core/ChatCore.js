@@ -247,4 +247,9 @@ class ChatCore {
             }
         }, 500);
     }
+}
+
+// Export for test environment
+if (typeof global !== 'undefined') {
+    global.ChatCore = ChatCore;
 } 

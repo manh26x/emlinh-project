@@ -388,4 +388,4 @@ function runUIManagerTests() {
 }
 
 // Export function for test runner
-window.runUIManagerTests = runUIManagerTests;
+global.runUIManagerTests = runUIManagerTests;

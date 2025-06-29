@@ -72,6 +72,11 @@ global.CustomEvent = class CustomEvent {
     }
 };
 
+// Mock alert, prompt, confirm
+global.alert = (message) => console.log('ALERT:', message);
+global.prompt = (message, defaultValue) => defaultValue || 'test input';
+global.confirm = (message) => true;
+
 // Test framework and utilities
 let testStats = { passed: 0, failed: 0, skipped: 0, total: 0 };
 let testResults = [];
@@ -113,6 +118,83 @@ const expect = (actual) => {
                 JSON.stringify(call) === JSON.stringify(args))) {
                 throw new Error(`Expected function to have been called with ${JSON.stringify(args)}`);
             }
+        },
+        toHaveBeenCalledTimes: (times) => {
+            if (!actual.mock || actual.mock.calls.length !== times) {
+                throw new Error(`Expected function to have been called ${times} times, but was called ${actual.mock ? actual.mock.calls.length : 0} times`);
+            }
+        },
+        toMatch: (pattern) => {
+            const regex = typeof pattern === 'string' ? new RegExp(pattern) : pattern;
+            if (!regex.test(actual)) {
+                throw new Error(`Expected ${actual} to match ${pattern}`);
+            }
+        },
+        toBeGreaterThan: (expected) => {
+            if (actual <= expected) {
+                throw new Error(`Expected ${actual} to be greater than ${expected}`);
+            }
+        },
+        toBeLessThan: (expected) => {
+            if (actual >= expected) {
+                throw new Error(`Expected ${actual} to be less than ${expected}`);
+            }
+        },
+        toBeNull: () => {
+            if (actual !== null) {
+                throw new Error(`Expected ${actual} to be null`);
+            }
+        },
+        toBeUndefined: () => {
+            if (actual !== undefined) {
+                throw new Error(`Expected ${actual} to be undefined`);
+            }
+        },
+        toThrow: (expectedError) => {
+            try {
+                if (typeof actual === 'function') {
+                    actual();
+                    throw new Error('Expected function to throw');
+                } else {
+                    throw new Error('Expected function to throw');
+                }
+            } catch (error) {
+                if (expectedError && !error.message.includes(expectedError)) {
+                    throw new Error(`Expected function to throw "${expectedError}", but threw "${error.message}"`);
+                }
+            }
+        },
+        not: {
+            toBe: (expected) => {
+                if (actual === expected) {
+                    throw new Error(`Expected ${actual} not to be ${expected}`);
+                }
+            },
+            toThrow: () => {
+                try {
+                    if (typeof actual === 'function') {
+                        actual();
+                    }
+                } catch (error) {
+                    throw new Error('Expected function not to throw');
+                }
+            },
+            toContain: (expected) => {
+                if (actual.includes(expected)) {
+                    throw new Error(`Expected ${actual} not to contain ${expected}`);
+                }
+            },
+            toHaveBeenCalled: () => {
+                if (actual.mock && actual.mock.calls.length > 0) {
+                    throw new Error('Expected function not to have been called');
+                }
+            },
+            toHaveBeenCalledWith: (...args) => {
+                if (actual.mock && actual.mock.calls.some(call => 
+                    JSON.stringify(call) === JSON.stringify(args))) {
+                    throw new Error(`Expected function not to have been called with ${JSON.stringify(args)}`);
+                }
+            }
         }
     };
 };
@@ -144,17 +226,35 @@ const jest = {
         wrappedFn.mockRejectedValueOnce = (error) => {
             mockFn.implementation = () => Promise.reject(error);
         };
+        wrappedFn.mockReturnValueOnce = (value) => {
+            const originalImpl = mockFn.implementation;
+            mockFn.implementation = (...args) => {
+                mockFn.implementation = originalImpl;
+                return value;
+            };
+        };
         
         return wrappedFn;
     },
     clearAllMocks: () => {},
     useFakeTimers: () => {},
     useRealTimers: () => {},
-    advanceTimersByTime: (ms) => {}
+    advanceTimersByTime: (ms) => {},
+    any: (constructor) => {
+        return {
+            asymmetricMatch: (other) => {
+                return typeof constructor === 'function' ? other instanceof constructor : typeof other === constructor;
+            },
+            toString: () => `Any<${constructor.name || constructor}>`
+        };
+    }
 };
 
 global.expect = expect;
 global.jest = jest;
+
+// Add expect.any as a global function
+expect.any = jest.any;
 
 // Simple test framework
 let currentSuite = null;
@@ -233,10 +333,44 @@ global.setupMockDOM = () => {
 function loadSourceFile(filePath) {
     try {
         const fullPath = path.join(__dirname, '../../..', filePath);
+        console.log(`📂 Loading: ${filePath} from ${fullPath}`);
+        
+        if (!fs.existsSync(fullPath)) {
+            console.error(`❌ File not found: ${fullPath}`);
+            return;
+        }
+        
         const content = fs.readFileSync(fullPath, 'utf8');
+        
+        // Execute in global context and try to capture classes
+        const beforeClasses = Object.keys(global).filter(key => typeof global[key] === 'function');
+        
         eval(content);
+        
+        // Check what new classes were added
+        const afterClasses = Object.keys(global).filter(key => typeof global[key] === 'function');
+        
+        // Also try to access classes directly in case they're in local scope
+        const classesToCheck = ['VideoManager', 'ChatUtils', 'ChatCore', 'UIManager', 'NotificationManager', 'SessionManager'];
+        
+        classesToCheck.forEach(className => {
+            try {
+                // Try to evaluate the class name to see if it exists
+                const cls = eval(`typeof ${className} !== 'undefined' ? ${className} : null`);
+                if (cls && typeof cls === 'function') {
+                    global[className] = cls;
+                    console.log(`✅ Exported ${className} to global`);
+                } else {
+                    console.log(`⚠️ ${className} not found in ${filePath}`);
+                }
+            } catch (e) {
+                console.log(`⚠️ ${className} not accessible in ${filePath}`);
+            }
+        });
+        
     } catch (error) {
-        console.error(`Failed to load ${filePath}:`, error.message);
+        console.error(`❌ Failed to load ${filePath}:`, error.message);
+        console.error('Stack trace:', error.stack);
     }
 }
 
@@ -257,6 +391,7 @@ async function runTests() {
     
     // Load source files
     console.log('📁 Loading source files...');
+    loadSourceFile('static/js/core/SessionManager.js');
     loadSourceFile('static/js/core/ChatCore.js');
     loadSourceFile('static/js/core/UIManager.js');
     loadSourceFile('static/js/core/NotificationManager.js');
@@ -271,6 +406,20 @@ async function runTests() {
     loadTestFile('tests/VideoManager.test.js');
     loadTestFile('tests/ChatUtils.test.js');
     loadTestFile('tests/Integration.test.js');
+    
+    // Ensure all classes are available before running tests
+    console.log('\n🔍 Checking class availability...');
+    const availableClasses = [];
+    const classesToCheck = ['ChatCore', 'UIManager', 'NotificationManager', 'VideoManager', 'ChatUtils', 'SessionManager'];
+    
+    classesToCheck.forEach(className => {
+        if (typeof global[className] !== 'undefined') {
+            availableClasses.push(className);
+            console.log(`✅ ${className} is available`);
+        } else {
+            console.log(`❌ ${className} is NOT available`);
+        }
+    });
     
     // Run tests
     console.log('\n🧪 Executing tests...');

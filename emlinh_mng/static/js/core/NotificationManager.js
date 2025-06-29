@@ -52,4 +52,9 @@ class NotificationManager {
     showInfo(message) {
         this.showNotification(message, 'info');
     }
+}
+
+// Export for test environment
+if (typeof global !== 'undefined') {
+    global.NotificationManager = NotificationManager;
 } 

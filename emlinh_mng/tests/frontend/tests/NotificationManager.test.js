@@ -16,8 +16,20 @@ function runNotificationManagerTests() {
             // Setup DOM
             setupMockDOM();
             
-            // Create NotificationManager instance
-            notificationManager = new NotificationManager();
+            // Create NotificationManager instance using global reference
+            if (typeof global.NotificationManager !== 'undefined') {
+                console.log('🔧 Creating NotificationManager instance...');
+                try {
+                    notificationManager = new global.NotificationManager();
+                    console.log('✅ NotificationManager instance created successfully');
+                } catch (error) {
+                    console.error('❌ Error creating NotificationManager instance:', error.message);
+                    notificationManager = null;
+                }
+            } else {
+                console.warn('NotificationManager class not available for testing');
+                notificationManager = null;
+            }
 
             // Get mock container
             mockToastContainer = document.querySelector('.toast-container');
@@ -326,4 +338,4 @@ function runNotificationManagerTests() {
 }
 
 // Export function for test runner
-window.runNotificationManagerTests = runNotificationManagerTests;
+global.runNotificationManagerTests = runNotificationManagerTests;

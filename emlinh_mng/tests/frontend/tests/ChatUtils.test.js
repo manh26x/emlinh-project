@@ -472,4 +472,4 @@ function runChatUtilsTests() {
 }
 
 // Export function for test runner
-window.runChatUtilsTests = runChatUtilsTests;
+global.runChatUtilsTests = runChatUtilsTests;
