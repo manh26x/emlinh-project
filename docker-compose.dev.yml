@@ -1,5 +1,3 @@
-version: '3.8'
-
 # Development override cho docker-compose.yml
 services:
   emlinh_app:

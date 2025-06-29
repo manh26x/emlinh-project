@@ -85,7 +85,7 @@ jobs:
 
     - name: Stop existing containers
       run: |
-        docker-compose down --remove-orphans || true
+        docker compose down --remove-orphans || true
 
     - name: Remove old images
       run: |
@@ -93,12 +93,12 @@ jobs:
 
     - name: Build and start services
       run: |
-        docker-compose build --no-cache
-        docker-compose up -d
+        docker compose build --no-cache
+        docker compose up -d
 
     - name: Wait for services to be healthy
       run: |
-        timeout 300 bash -c 'until docker-compose ps | grep -q "healthy\|Up"; do sleep 10; done'
+        timeout 300 bash -c 'until docker compose ps | grep -q "healthy\|Up"; do sleep 10; done'
 
     - name: Verify deployment
       run: |
