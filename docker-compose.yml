@@ -1,0 +1,88 @@
+version: '3.8'
+
+services:
+  # Database service
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: emlinh_db
+      POSTGRES_USER: emlinh_user
+      POSTGRES_PASSWORD: emlinh_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./emlinh_mng/sql:/docker-entrypoint-initdb.d
+    networks:
+      - emlinh_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U emlinh_user -d emlinh_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Main application service
+  emlinh_app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    environment:
+      - FLASK_ENV=production
+      - DATABASE_URL=postgresql://emlinh_user:emlinh_password@postgres:5432/emlinh_db
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-here}
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://ollama:11434}
+    ports:
+      - "5000:5000"  # Flask app
+      - "3000:3000"  # Remotion studio
+    volumes:
+      - app_data:/app/data
+      - ./public/audios:/app/public/audios
+      - ./public/models:/app/public/models
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    networks:
+      - emlinh_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Ollama service for embeddings
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - emlinh_network
+    environment:
+      - OLLAMA_MODELS=nomic-embed-text
+    restart: unless-stopped
+
+  # Nginx reverse proxy
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./ssl:/etc/nginx/ssl
+    depends_on:
+      - emlinh_app
+    networks:
+      - emlinh_network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  app_data:
+  ollama_data:
+
+networks:
+  emlinh_network:
+    driver: bridge
