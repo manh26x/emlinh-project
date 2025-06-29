@@ -90,7 +90,8 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 EXPOSE 5000 3000
 
 # Create startup script để chạy cả hai services
-RUN cat > /app/start.sh << 'EOFSCRIPT'
+RUN cat > /app/start.sh <<EOF && \
+    chmod +x /app/start.sh
 #!/bin/bash
 set -e
 
@@ -104,9 +105,7 @@ cd /app/emlinh_mng && python3 -m src.app.run
 wait -n
 
 # Exit with status of process that exited first
-exit $?
-EOFSCRIPT
-
-RUN chmod +x /app/start.sh
+exit \$?
+EOF
 
 CMD ["/app/start.sh"]
