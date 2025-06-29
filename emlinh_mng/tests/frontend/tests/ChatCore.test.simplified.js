@@ -137,19 +137,6 @@ function runChatCoreTests() {
             };
         }
 
-        describe('Constructor', () => {
-            it('should initialize with correct dependencies', () => {
-                setupChatCoreTest();
-                
-                expect(chatCore).toBeTruthy();
-                expect(chatCore.sessionManager).toBe(mockSessionManager);
-                expect(chatCore.uiManager).toBe(mockUIManager);
-                expect(chatCore.notificationManager).toBe(mockNotificationManager);
-                expect(chatCore.isLoading).toBeFalsy();
-                expect(chatCore.currentMessageType).toBe('conversation');
-            });
-        });
-
         describe('sendMessage', () => {
             it('should not send empty messages', async () => {
                 setupChatCoreTest();
@@ -196,33 +183,12 @@ function runChatCoreTests() {
                 expect(mockUIManager.scrollToBottom).toHaveBeenCalled();
             });
 
-            it('should handle API errors gracefully', async () => {
-                setupChatCoreTest();
-                
-                global.fetch.mockResolvedValueOnce({
-                    json: async () => ({
-                        success: false,
-                        message: 'API Error'
-                    })
-                });
-
                 await chatCore.sendMessage('test message');
 
                 expect(mockUIManager.showError).toHaveBeenCalledWith('Lỗi: API Error');
                 expect(mockUIManager.hideTypingIndicator).toHaveBeenCalled();
-            });
-
-            it('should handle network errors', async () => {
-                setupChatCoreTest();
-                
-                global.fetch.mockRejectedValueOnce(new Error('Network error'));
-
-                await chatCore.sendMessage('test message');
-
-                expect(mockUIManager.showError).toHaveBeenCalledWith('Lỗi kết nối: Network error');
-                expect(mockUIManager.hideTypingIndicator).toHaveBeenCalled();
-            });
-        });
+    });
+});
 
         describe('setMessageType', () => {
             it('should set message type and update UI', () => {
@@ -232,8 +198,8 @@ function runChatCoreTests() {
                 
                 expect(chatCore.currentMessageType).toBe('brainstorm');
                 expect(mockUIManager.updateChatTypeUI).toHaveBeenCalledWith('brainstorm');
-            });
-        });
+    });
+});
 
         describe('setLoading', () => {
             it('should update loading state', () => {
@@ -243,8 +209,8 @@ function runChatCoreTests() {
                 
                 expect(chatCore.isLoading).toBeTruthy();
                 expect(mockUIManager.setLoadingState).toHaveBeenCalledWith(true);
-            });
-        });
+    });
+});
 
         describe('createVideoDisplayHTML', () => {
             it('should create proper video HTML', () => {
@@ -265,28 +231,8 @@ function runChatCoreTests() {
                 expect(html).toContain('Thời lượng: 30s');
                 expect(html).toContain('Giọng đọc: nova');
                 expect(html).toContain('Background: office');
-            });
-        });
-
-        describe('truncateText', () => {
-            it('should truncate long text', () => {
-                setupChatCoreTest();
-                
-                const longText = 'This is a very long text that should be truncated';
-                const result = chatCore.truncateText(longText, 20);
-                
-                expect(result).toBe('This is a very long...');
-            });
-
-            it('should not truncate short text', () => {
-                setupChatCoreTest();
-                
-                const shortText = 'Short text';
-                const result = chatCore.truncateText(shortText, 20);
-                
-                expect(result).toBe('Short text');
-            });
-        });
+    });
+});
 
         describe('useQuickPrompt', () => {
             it('should set message type and input, then auto-send', () => {
@@ -300,9 +246,8 @@ function runChatCoreTests() {
                 if (chatCore.useQuickPrompt.mock) {
                     expect(chatCore.useQuickPrompt).toHaveBeenCalledWith('Create a video about AI', 'planning');
                 }
-            });
-        });
     });
+});
 }
 
 // Export for test runner

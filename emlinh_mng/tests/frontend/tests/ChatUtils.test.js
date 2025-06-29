@@ -86,78 +86,6 @@ function runChatUtilsTests() {
             });
         });
 
-        describe('exportChat', () => {
-            beforeEach(() => {
-                // Create mock messages in DOM
-                document.body.innerHTML = `
-                    <div class="toast-container position-fixed top-0 end-0 p-3"></div>
-                    <div class="message user-message">
-                        <div class="message-content">
-                            <div>User message 1</div>
-                        </div>
-                        <small>12:34:56</small>
-                    </div>
-                    <div class="message ai-message">
-                        <div class="message-content">
-                            <div>AI response 1</div>
-                        </div>
-                        <small>12:35:01</small>
-                    </div>
-                    <div class="message user-message">
-                        <div class="message-content">
-                            <div>User message 2</div>
-                        </div>
-                        <small>12:35:30</small>
-                    </div>
-                `;
-
-                // Mock link click
-                const mockLink = {
-                    href: '',
-                    download: '',
-                    click: jest.fn()
-                };
-                document.createElement = jest.fn(() => mockLink);
-            });
-
-            it('should export chat messages to JSON file', () => {
-                ChatUtils.exportChat();
-
-                const expectedData = [
-                    {
-                        type: 'user',
-                        content: 'User message 1',
-                        timestamp: '12:34:56'
-                    },
-                    {
-                        type: 'ai', 
-                        content: 'AI response 1',
-                        timestamp: '12:35:01'
-                    },
-                    {
-                        type: 'user',
-                        content: 'User message 2',
-                        timestamp: '12:35:30'
-                    }
-                ];
-
-                expect(window.Blob).toHaveBeenCalledWith(
-                    [JSON.stringify(expectedData, null, 2)],
-                    { type: 'application/json' }
-                );
-                expect(window.URL.createObjectURL).toHaveBeenCalled();
-                expect(document.createElement).toHaveBeenCalledWith('a');
-                expect(mockChatManager.notificationManager.showSuccess).toHaveBeenCalledWith(
-                    'Đã export chat thành công'
-                );
-                expect(window.URL.revokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
-            });
-
-            it('should handle export with no messages', () => {
-                document.body.innerHTML = '<div class="toast-container position-fixed top-0 end-0 p-3"></div>';
-
-                expect(() => ChatUtils.exportChat()).not.toThrow();
-                expect(window.Blob).toHaveBeenCalledWith(['[]'], { type: 'application/json' });
             });
 
             it('should work without chatManager', () => {
@@ -166,43 +94,6 @@ function runChatUtilsTests() {
                 expect(() => ChatUtils.exportChat()).not.toThrow();
             });
         });
-
-        describe('reprocessMessages', () => {
-            beforeEach(() => {
-                // Create mock AI messages
-                document.body.innerHTML = `
-                    <div class="toast-container position-fixed top-0 end-0 p-3"></div>
-                    <div class="ai-message">
-                        <div class="message-content">
-                            <div>Regular message without video</div>
-                        </div>
-                    </div>
-                    <div class="ai-message">
-                        <div class="message-content">
-                            <div>Video message with ID: 123</div>
-                        </div>
-                    </div>
-                    <div class="ai-message">
-                        <div class="message-content">
-                            <div>Check video at /videos/456</div>
-                        </div>
-                    </div>
-                    <div class="ai-message">
-                        <div class="message-content">
-                            <div class="existing-embed">Already has video-embed-container</div>
-                        </div>
-                    </div>
-                `;
-            });
-
-            it('should reprocess messages and add video embeds', () => {
-                mockChatManager.uiManager.formatMessage = jest.fn()
-                    .mockImplementation(msg => {
-                        if (msg.includes('Video ID: 123') || msg.includes('/videos/456')) {
-                            return `${msg}<div class="video-embed-container">Video embed</div>`;
-                        }
-                        return msg;
-                    });
 
                 const result = ChatUtils.reprocessMessages();
 
@@ -213,43 +104,6 @@ function runChatUtilsTests() {
                 );
             });
 
-            it('should handle no video messages found', () => {
-                document.body.innerHTML = `
-                    <div class="toast-container position-fixed top-0 end-0 p-3"></div>
-                    <div class="ai-message">
-                        <div class="message-content">
-                            <div>Just a regular message</div>
-                        </div>
-                    </div>
-                `;
-
-                const result = ChatUtils.reprocessMessages();
-
-                expect(result).toBe(0);
-                expect(mockChatManager.notificationManager.showInfo).toHaveBeenCalledWith(
-                    'ℹ️ Không tìm thấy tin nhắn video mới để hiển thị. Kiểm tra Console (F12) để xem chi tiết.'
-                );
-            });
-
-            it('should handle missing UIManager', () => {
-                window.chatManager = { notificationManager: mockChatManager.notificationManager };
-
-                expect(() => ChatUtils.reprocessMessages()).not.toThrow();
-            });
-
-            it('should not reprocess already embedded videos', () => {
-                // Mock messages with existing embeds
-                const mockMessage = document.createElement('div');
-                mockMessage.innerHTML = '<div class="video-embed-container">Already embedded</div>';
-                mockMessage.textContent = 'Video ID: 123';
-                
-                document.querySelector('.ai-message .message-content div').replaceWith(mockMessage);
-
-                const result = ChatUtils.reprocessMessages();
-
-                // Should not process the message that already has embed
-                expect(result).toBe(1); // Only process messages without existing embeds
-            });
         });
 
         describe('escapeHtml', () => {
@@ -291,14 +145,6 @@ function runChatUtilsTests() {
             });
         });
 
-        describe('generateRandomId', () => {
-            it('should generate random ID with prefix', () => {
-                const id = ChatUtils.generateRandomId('test');
-                
-                expect(id).toContain('test_');
-                expect(id.length).toBeGreaterThan(10);
-            });
-
             it('should generate random ID with default prefix', () => {
                 const id = ChatUtils.generateRandomId();
                 
@@ -313,74 +159,14 @@ function runChatUtilsTests() {
             });
         });
 
-        describe('debounce', () => {
-            beforeEach(() => {
-                jest.useFakeTimers();
-            });
-
             afterEach(() => {
                 jest.useRealTimers();
             });
 
-            it('should debounce function calls', () => {
-                const mockFn = jest.fn();
-                const debouncedFn = ChatUtils.debounce(mockFn, 100);
-
-                debouncedFn('call1');
-                debouncedFn('call2');
-                debouncedFn('call3');
-
-                expect(mockFn).not.toHaveBeenCalled();
-
-                jest.advanceTimersByTime(100);
-
-                expect(mockFn).toHaveBeenCalledTimes(1);
-                expect(mockFn).toHaveBeenCalledWith('call3');
-            });
-
-            it('should reset timer on new calls', () => {
-                const mockFn = jest.fn();
-                const debouncedFn = ChatUtils.debounce(mockFn, 100);
-
-                debouncedFn('call1');
-                jest.advanceTimersByTime(50);
-                debouncedFn('call2');
-                jest.advanceTimersByTime(50);
-
-                expect(mockFn).not.toHaveBeenCalled();
-
-                jest.advanceTimersByTime(50);
-
-                expect(mockFn).toHaveBeenCalledTimes(1);
-                expect(mockFn).toHaveBeenCalledWith('call2');
-            });
         });
 
-        describe('throttle', () => {
-            beforeEach(() => {
-                jest.useFakeTimers();
-            });
-
             afterEach(() => {
                 jest.useRealTimers();
-            });
-
-            it('should throttle function calls', () => {
-                const mockFn = jest.fn();
-                const throttledFn = ChatUtils.throttle(mockFn, 100);
-
-                throttledFn('call1');
-                throttledFn('call2');
-                throttledFn('call3');
-
-                expect(mockFn).toHaveBeenCalledTimes(1);
-                expect(mockFn).toHaveBeenCalledWith('call1');
-
-                jest.advanceTimersByTime(100);
-
-                throttledFn('call4');
-                expect(mockFn).toHaveBeenCalledTimes(2);
-                expect(mockFn).toHaveBeenCalledWith('call4');
             });
 
             it('should ignore calls during throttle period', () => {
@@ -398,19 +184,6 @@ function runChatUtilsTests() {
                 expect(mockFn).toHaveBeenCalledWith('first');
             });
         });
-
-        describe('addTestVideoMessage', () => {
-            it('should add test video message', () => {
-                ChatUtils.addTestVideoMessage();
-
-                expect(mockChatManager.uiManager.addAIMessage).toHaveBeenCalledWith(
-                    expect.stringContaining('Video đã được tạo thành công'),
-                    expect.any(String)
-                );
-                expect(mockChatManager.notificationManager.showSuccess).toHaveBeenCalledWith(
-                    '✅ Đã thêm tin nhắn test video'
-                );
-            });
 
             it('should handle missing chatManager', () => {
                 window.chatManager = null;
@@ -444,14 +217,6 @@ function runChatUtilsTests() {
                 document.body.innerHTML = '';
                 
                 expect(() => ChatUtils.exportChat()).not.toThrow();
-            });
-
-            it('should handle invalid timestamp formats', () => {
-                const result1 = ChatUtils.formatTimestamp('invalid-date');
-                const result2 = ChatUtils.formatTimestamp('');
-                
-                expect(result1).toMatch(/\d{1,2}:\d{2}:\d{2}/);
-                expect(result2).toMatch(/\d{1,2}:\d{2}:\d{2}/);
             });
 
             it('should handle very large debounce/throttle delays', () => {

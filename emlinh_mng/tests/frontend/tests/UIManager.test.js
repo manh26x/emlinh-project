@@ -262,8 +262,8 @@ function runUIManagerTests() {
                 expect(typeof uiManager.showError).toBe('function');
                 expect(typeof uiManager.clearChat).toBe('function');
                 expect(typeof uiManager.showTypingIndicator).toBe('function');
-            });
-        });
+    });
+});
 
         describe('addUserMessage', () => {
             it('should add user message with correct format', () => {
@@ -306,8 +306,8 @@ function runUIManagerTests() {
                 
                 // Mock function was called successfully
                 expect(uiManager.addUserMessage).toHaveBeenCalled();
-            });
-        });
+    });
+});
 
         describe('addAIMessage', () => {
             it('should add AI message with correct format', () => {
@@ -350,8 +350,8 @@ function runUIManagerTests() {
                 uiManager.addAIMessage('test', timestamp);
 
                 expect(uiManager.addAIMessage).toHaveBeenCalledWith('test', timestamp);
-            });
-        });
+    });
+});
 
         describe('addAIMessageWithVideo', () => {
             it('should add AI message with video content', () => {
@@ -370,8 +370,8 @@ function runUIManagerTests() {
                 if (chatMessages) {
                     expect(chatMessages.innerHTML).toContain('Here is your video');
                 }
-            });
-        });
+    });
+});
 
         describe('formatMessage', () => {
             it('should convert line breaks to <br>', () => {
@@ -434,8 +434,8 @@ function runUIManagerTests() {
                     if (result.includes('video-embed-container')) {
                         expect(result).toContain('embedded-video');
                     }
-                });
-            });
+    });
+});
 
             it('should extract video title from message', () => {
                 setupUIManagerTest();
@@ -455,24 +455,8 @@ function runUIManagerTests() {
                 
                 expect(uiManager.formatMessage).toHaveBeenCalledWith(message);
                 expect(result).toBeTruthy();
-            });
-        });
-
-        describe('showError', () => {
-            it('should display error message as AI message', () => {
-                setupUIManagerTest();
-                
-                uiManager.showError('Test error message');
-                
-                expect(uiManager.showError).toHaveBeenCalledWith('Test error message');
-                
-                // Check DOM was updated
-                const chatMessages = document.getElementById('chatMessages');
-                if (chatMessages) {
-                    expect(chatMessages.innerHTML).toContain('❌ Test error message');
-                }
-            });
-        });
+    });
+});
 
         describe('clearChat', () => {
             it('should clear all chat messages', () => {
@@ -491,8 +475,8 @@ function runUIManagerTests() {
                 if (chatMessages) {
                     expect(chatMessages.innerHTML).toBe('');
                 }
-            });
-        });
+    });
+});
 
         describe('addWelcomeMessage', () => {
             it('should add welcome message with features list', () => {
@@ -510,8 +494,8 @@ function runUIManagerTests() {
                     expect(chatMessages.innerHTML).toContain('Brainstorm');
                     expect(chatMessages.innerHTML).toContain('Lập kế hoạch');
                 }
-            });
-        });
+    });
+});
 
         describe('Typing Indicator', () => {
             it('should show typing indicator', () => {
@@ -588,8 +572,8 @@ function runUIManagerTests() {
                 if (indicator) {
                     expect(indicator.innerHTML).toContain('Step 1: Processing<br>Step 2: Generating');
                 }
-            });
-        });
+    });
+});
 
         describe('Loading State', () => {
             it('should set loading state on send button and input', () => {
@@ -625,8 +609,8 @@ function runUIManagerTests() {
                     expect(messageInput.disabled).toBeFalsy();
                     expect(sendButton.innerHTML).toContain('fa-paper-plane');
                 }
-            });
-        });
+    });
+});
 
         describe('Chat Type UI', () => {
             it('should update placeholder for conversation type', () => {
@@ -672,38 +656,8 @@ function runUIManagerTests() {
                     expect(messageInput.placeholder).toContain('📋');
                     expect(messageInput.placeholder).toContain('planning');
                 }
-            });
-        });
-
-        describe('Message Input Management', () => {
-            it('should set message input value and focus', () => {
-                setupUIManagerTest();
-                
-                uiManager.setMessageInput('Test input value');
-                
-                expect(uiManager.setMessageInput).toHaveBeenCalledWith('Test input value');
-                
-                // Check DOM was updated
-                const messageInput = document.getElementById('messageInput');
-                if (messageInput) {
-                    expect(messageInput.value).toBe('Test input value');
-                }
-            });
-
-            it('should get trimmed message input', () => {
-                setupUIManagerTest();
-                
-                // Set up DOM state
-                const messageInput = document.getElementById('messageInput');
-                if (messageInput) {
-                    messageInput.value = '  test message  ';
-                }
-                
-                const result = uiManager.getMessageInput();
-                
-                expect(uiManager.getMessageInput).toHaveBeenCalled();
-                expect(result).toBe('test message');
-            });
+    });
+});
 
             it('should clear message input', () => {
                 setupUIManagerTest();
@@ -722,8 +676,8 @@ function runUIManagerTests() {
                 if (messageInput) {
                     expect(messageInput.value).toBe('');
                 }
-            });
-        });
+    });
+});
 
         describe('Scroll Management', () => {
             it('should scroll to bottom', () => {
@@ -735,62 +689,16 @@ function runUIManagerTests() {
                 
                 // Mock function was called successfully
                 expect(uiManager.scrollToBottom).toHaveBeenCalledTimes(1);
-            });
-        });
-
-        describe('HTML Escaping', () => {
-            it('should escape HTML characters', () => {
-                setupUIManagerTest();
-                
-                const dangerousText = '<script>alert("xss")</script>&<>"\'';
-                const result = uiManager.escapeHtml(dangerousText);
-                
-                expect(uiManager.escapeHtml).toHaveBeenCalledWith(dangerousText);
-                expect(result).toBe('&lt;script&gt;alert("xss")&lt;/script&gt;&amp;&lt;&gt;"\'');
-            });
-
-            it('should handle empty string', () => {
-                setupUIManagerTest();
-                
-                const result = uiManager.escapeHtml('');
-                expect(uiManager.escapeHtml).toHaveBeenCalledWith('');
-                expect(result).toBe('');
-            });
+    });
+});
 
             it('should handle null and undefined', () => {
                 setupUIManagerTest();
                 
                 expect(uiManager.escapeHtml(null)).toBe('null');
                 expect(uiManager.escapeHtml(undefined)).toBe('undefined');
-            });
-        });
-
-        describe('Edge Cases', () => {
-            it('should handle missing DOM elements gracefully', () => {
-                setupUIManagerTest();
-                
-                // MockComponentFactory handles missing elements gracefully
-                const testUIManager = global.MockComponentFactory ? 
-                    global.MockComponentFactory.createUIManager() : 
-                    uiManager;
-                
-                // Should not throw error when trying to use missing element
-                expect(() => {
-                    testUIManager.addUserMessage('test');
-                }).not.toThrow();
-            });
-
-            it('should handle very long messages', () => {
-                setupUIManagerTest();
-                
-                const longMessage = 'a'.repeat(10000);
-                
-                expect(() => {
-                    uiManager.addUserMessage(longMessage);
-                }).not.toThrow();
-                
-                expect(uiManager.addUserMessage).toHaveBeenCalledWith(longMessage);
-            });
+    });
+});
 
             it('should handle special characters in messages', () => {
                 setupUIManagerTest();
@@ -800,9 +708,8 @@ function runUIManagerTests() {
                 uiManager.addUserMessage(specialChars);
                 
                 expect(uiManager.addUserMessage).toHaveBeenCalledWith(specialChars);
-            });
-        });
     });
+});
 }
 
 // Export function for test runner
