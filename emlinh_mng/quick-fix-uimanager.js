@@ -1,5 +1,6 @@
 /**
  * Quick Fix: Add setupUIManagerTest() to all remaining UIManager tests
+ * TODO: Remove this quick-fix script when test runner issues are permanently addressed
  */
 
 const fs = require('fs');

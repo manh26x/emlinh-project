@@ -1,5 +1,6 @@
 /**
- * Quick Fix: Add setup function to all VideoManager tests  
+ * Quick Fix: Add setup function to all VideoManager tests
+ * TODO: Remove this quick-fix script once the underlying issues with beforeEach are resolved
  */
 
 const fs = require('fs');

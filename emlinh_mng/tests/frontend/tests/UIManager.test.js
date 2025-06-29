@@ -4,7 +4,6 @@
  */
 
 function runUIManagerTests() {
-    console.log('🔧 DEBUG: UIManager test file LOADED and runUIManagerTests called!');
     describe('UIManager Tests', () => {
         let uiManager;
         let mockElements;
@@ -14,11 +13,8 @@ function runUIManagerTests() {
         });
 
         beforeEach(() => {
-            console.log('🔧 DEBUG: Starting UIManager beforeEach setup...');
-            
             // Reset DOM mock
             setupMockDOM();
-            console.log('🔧 DEBUG: setupMockDOM called');
             
             // Get mock elements for testing
             mockElements = {
@@ -29,17 +25,9 @@ function runUIManagerTests() {
                 messagesContainer: document.getElementById('messagesContainer'),
                 typingIndicator: document.getElementById('typingIndicator')
             };
-            
-            console.log('🔧 DEBUG: mockElements:', Object.keys(mockElements).map(key => `${key}: ${mockElements[key] ? 'found' : 'null'}`));
 
             // ALWAYS use guaranteed working mock - bypass all other attempts
-            console.log('🔧 DEBUG: Calling createGuaranteedUIManagerMock...');
             uiManager = createGuaranteedUIManagerMock();
-            console.log('🔧 DEBUG: uiManager created:', uiManager ? 'success' : 'FAILED');
-            
-            if (uiManager) {
-                console.log('🔧 DEBUG: uiManager keys:', Object.keys(uiManager).slice(0, 5));
-            }
             
             // Ensure uiManager is never undefined
             expect(uiManager).toBeTruthy();
@@ -59,16 +47,11 @@ function runUIManagerTests() {
             };
             
             uiManager = createGuaranteedUIManagerMock();
-            console.log('🔧 SETUP: uiManager created:', uiManager ? 'SUCCESS' : 'FAILED');
             return uiManager;
         }
         
         // Guaranteed working UIManager mock (proven in direct test)
         function createGuaranteedUIManagerMock() {
-            console.log('🔧 DEBUG: Inside createGuaranteedUIManagerMock, mockElements:', mockElements);
-            console.log('🔧 DEBUG: jest available:', typeof jest);
-            console.log('🔧 DEBUG: document available:', typeof document);
-            
             const mock = {
                 // Core properties
                 chatForm: mockElements.chatForm,
@@ -713,6 +696,4 @@ function runUIManagerTests() {
 }
 
 // Export function for test runner
-console.log('🔧 DEBUG: Exporting runUIManagerTests to global');
 global.runUIManagerTests = runUIManagerTests;
-console.log('🔧 DEBUG: global.runUIManagerTests exists:', typeof global.runUIManagerTests);

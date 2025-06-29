@@ -19,7 +19,6 @@ function runVideoManagerTests() {
 
         // Setup function since beforeEach not working
         function setupVideoManagerTest() {
-            console.log('🔧 SETUP: VideoManager test setup starting...');
             
             // Setup DOM
             setupMockDOM();
