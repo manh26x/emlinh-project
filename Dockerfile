@@ -73,8 +73,11 @@ COPY --from=python-deps /usr/local/lib/python3.10/dist-packages /usr/local/lib/p
 COPY --from=python-deps /usr/local/bin /usr/local/bin
 
 # Copy built Remotion assets
-COPY --from=remotion-builder /app/emlinh-remotion/out /app/emlinh-remotion/out
+COPY --from=remotion-builder /app/emlinh-remotion/build /app/emlinh-remotion/build
 COPY --from=remotion-builder /app/emlinh-remotion/node_modules /app/emlinh-remotion/node_modules
+
+# Create out directory for rendered videos
+RUN mkdir -p /app/emlinh-remotion/out
 
 # Copy application code
 WORKDIR /app
