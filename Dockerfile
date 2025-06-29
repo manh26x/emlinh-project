@@ -14,8 +14,11 @@ RUN apt-get update && apt-get install -y \
     python3 \
     python3-pip \
     python3-dev \
-    nodejs \
-    npm \
+    && rm -rf /var/lib/apt/lists/*
+
+# Cài đặt Node.js 18.x
+RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
 
 # Cài đặt FFmpeg và cache
@@ -41,7 +44,7 @@ FROM base-tools AS remotion-builder
 
 WORKDIR /app/emlinh-remotion
 COPY emlinh-remotion/package*.json ./
-RUN npm ci --only=production && npm cache clean --force
+RUN npm ci && npm cache clean --force
 
 COPY emlinh-remotion/ ./
 RUN npm run build
