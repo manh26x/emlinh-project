@@ -95,7 +95,7 @@ RUN cat > /app/start.sh << 'EOFSCRIPT'
 set -e
 
 # Start emlinh-remotion in background
-cd /app/emlinh-remotion && npm run dev &
+cd /app/emlinh-remotion && npm start &
 
 # Start emlinh_mng
 cd /app/emlinh_mng && python3 -m src.app.run
