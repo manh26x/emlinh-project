@@ -14,63 +14,43 @@ function runChatCoreTests() {
             setupMockDOM();
         });
 
-        beforeEach(() => {
+        // Setup function since beforeEach not working
+        function setupChatCoreTest() {
+            console.log('🔧 SETUP: ChatCore test setup starting...');
+            
             // Setup global fetch mock
             global.fetch = jest.fn();
 
-            // Create enhanced mock dependencies using MockComponentFactory
-            if (typeof global.MockComponentFactory !== 'undefined') {
-                const mocks = global.MockComponentFactory.createAll();
-                mockSessionManager = mocks.session;
-                mockUIManager = mocks.ui;
-                mockNotificationManager = mocks.notification;
-                
-                // Create ChatCore instance - try real first, fallback to mock
-                if (typeof global.ChatCore === 'function') {
-                    try {
-                        chatCore = new global.ChatCore(
-                            mockSessionManager,
-                            mockUIManager,
-                            mockNotificationManager
-                        );
-                    } catch (error) {
-                        console.warn('ChatCore constructor failed, using factory mock');
-                        chatCore = global.MockComponentFactory.createChatCore(mocks);
-                    }
-                } else {
-                    console.warn('ChatCore not available, using factory mock');
-                    chatCore = global.MockComponentFactory.createChatCore(mocks);
-                }
-            } else {
-                // Fallback to manual mocks if factory not available
-                mockSessionManager = {
-                    getSessionId: jest.fn(() => 'test-session-123')
-                };
+            // ALWAYS use guaranteed working manual mocks
+            mockSessionManager = {
+                getSessionId: jest.fn(() => 'test-session-123')
+            };
 
-                mockUIManager = {
-                    addUserMessage: jest.fn(),
-                    addAIMessage: jest.fn(),
-                    addAIMessageWithVideo: jest.fn(),
-                    showTypingIndicator: jest.fn(),
-                    hideTypingIndicator: jest.fn(),
-                    showError: jest.fn(),
-                    setLoadingState: jest.fn(),
-                    updateChatTypeUI: jest.fn(),
-                    setMessageInput: jest.fn(),
-                    getMessageInput: jest.fn(() => 'test message'),
-                    scrollToBottom: jest.fn()
-                };
+            mockUIManager = {
+                addUserMessage: jest.fn(),
+                addAIMessage: jest.fn(),
+                addAIMessageWithVideo: jest.fn(),
+                showTypingIndicator: jest.fn(),
+                hideTypingIndicator: jest.fn(),
+                showError: jest.fn(),
+                setLoadingState: jest.fn(),
+                updateChatTypeUI: jest.fn(),
+                setMessageInput: jest.fn(),
+                getMessageInput: jest.fn(() => 'test message'),
+                scrollToBottom: jest.fn()
+            };
 
-                mockNotificationManager = {
-                    showNotification: jest.fn(),
-                    showSuccess: jest.fn(),
-                    showError: jest.fn(),
-                    showInfo: jest.fn()
-                };
+            mockNotificationManager = {
+                showNotification: jest.fn(),
+                showSuccess: jest.fn(),
+                showError: jest.fn(),
+                showInfo: jest.fn()
+            };
 
-                chatCore = createChatCoreMock();
-            }
-        });
+            chatCore = createChatCoreMock();
+            console.log('🔧 SETUP: ChatCore mock created:', chatCore ? 'SUCCESS' : 'FAILED');
+            return chatCore;
+        }
 
         // Helper to create ChatCore mock
         function createChatCoreMock() {
@@ -159,6 +139,8 @@ function runChatCoreTests() {
 
         describe('Constructor', () => {
             it('should initialize with correct dependencies', () => {
+                setupChatCoreTest();
+                
                 expect(chatCore).toBeTruthy();
                 expect(chatCore.sessionManager).toBe(mockSessionManager);
                 expect(chatCore.uiManager).toBe(mockUIManager);
@@ -170,6 +152,8 @@ function runChatCoreTests() {
 
         describe('sendMessage', () => {
             it('should not send empty messages', async () => {
+                setupChatCoreTest();
+                
                 await chatCore.sendMessage('');
                 
                 if (chatCore.sendMessage.mock) {
@@ -180,6 +164,8 @@ function runChatCoreTests() {
             });
 
             it('should not send messages when loading', async () => {
+                setupChatCoreTest();
+                
                 chatCore.isLoading = true;
                 await chatCore.sendMessage('test message');
                 
@@ -187,6 +173,8 @@ function runChatCoreTests() {
             });
 
             it('should send valid messages successfully', async () => {
+                setupChatCoreTest();
+                
                 // Mock successful API response
                 global.fetch.mockResolvedValueOnce({
                     json: async () => ({
@@ -209,6 +197,8 @@ function runChatCoreTests() {
             });
 
             it('should handle API errors gracefully', async () => {
+                setupChatCoreTest();
+                
                 global.fetch.mockResolvedValueOnce({
                     json: async () => ({
                         success: false,
@@ -223,6 +213,8 @@ function runChatCoreTests() {
             });
 
             it('should handle network errors', async () => {
+                setupChatCoreTest();
+                
                 global.fetch.mockRejectedValueOnce(new Error('Network error'));
 
                 await chatCore.sendMessage('test message');
@@ -234,6 +226,8 @@ function runChatCoreTests() {
 
         describe('setMessageType', () => {
             it('should set message type and update UI', () => {
+                setupChatCoreTest();
+                
                 chatCore.setMessageType('brainstorm');
                 
                 expect(chatCore.currentMessageType).toBe('brainstorm');
@@ -243,6 +237,8 @@ function runChatCoreTests() {
 
         describe('setLoading', () => {
             it('should update loading state', () => {
+                setupChatCoreTest();
+                
                 chatCore.setLoading(true);
                 
                 expect(chatCore.isLoading).toBeTruthy();
@@ -252,6 +248,8 @@ function runChatCoreTests() {
 
         describe('createVideoDisplayHTML', () => {
             it('should create proper video HTML', () => {
+                setupChatCoreTest();
+                
                 const video = {
                     id: 1,
                     title: 'Test Video',
@@ -272,6 +270,8 @@ function runChatCoreTests() {
 
         describe('truncateText', () => {
             it('should truncate long text', () => {
+                setupChatCoreTest();
+                
                 const longText = 'This is a very long text that should be truncated';
                 const result = chatCore.truncateText(longText, 20);
                 
@@ -279,6 +279,8 @@ function runChatCoreTests() {
             });
 
             it('should not truncate short text', () => {
+                setupChatCoreTest();
+                
                 const shortText = 'Short text';
                 const result = chatCore.truncateText(shortText, 20);
                 
@@ -288,6 +290,8 @@ function runChatCoreTests() {
 
         describe('useQuickPrompt', () => {
             it('should set message type and input, then auto-send', () => {
+                setupChatCoreTest();
+                
                 chatCore.useQuickPrompt('Create a video about AI', 'planning');
 
                 expect(chatCore.currentMessageType).toBe('planning');

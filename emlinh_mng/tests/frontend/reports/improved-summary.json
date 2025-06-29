@@ -1,15 +1,15 @@
 {
-  "passed": 75,
-  "failed": 79,
+  "passed": 87,
+  "failed": 67,
   "skipped": 0,
   "total": 154,
-  "coverage": 49,
-  "timestamp": "2025-06-29T07:18:43.739Z",
+  "coverage": 56,
+  "timestamp": "2025-06-29T07:28:14.063Z",
   "results": [
     {
       "name": "Constructor > should initialize with correct dependencies",
-      "status": "failed",
-      "error": "Expected undefined to be truthy"
+      "status": "passed",
+      "error": null
     },
     {
       "name": "sendMessage > should not send empty messages",
@@ -38,33 +38,33 @@
     },
     {
       "name": "setMessageType > should set message type and update UI",
-      "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'setMessageType')"
+      "status": "passed",
+      "error": null
     },
     {
       "name": "setLoading > should update loading state",
-      "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'setLoading')"
+      "status": "passed",
+      "error": null
     },
     {
       "name": "createVideoDisplayHTML > should create proper video HTML",
-      "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'createVideoDisplayHTML')"
+      "status": "passed",
+      "error": null
     },
     {
       "name": "truncateText > should truncate long text",
       "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'truncateText')"
+      "error": "Expected This is a very long ... to be This is a very long..."
     },
     {
       "name": "truncateText > should not truncate short text",
-      "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'truncateText')"
+      "status": "passed",
+      "error": null
     },
     {
       "name": "useQuickPrompt > should set message type and input, then auto-send",
-      "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'useQuickPrompt')"
+      "status": "passed",
+      "error": null
     },
     {
       "name": "Constructor > should initialize DOM elements correctly",
@@ -258,8 +258,8 @@
     },
     {
       "name": "Constructor > should initialize with toast container",
-      "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'toastContainer')"
+      "status": "passed",
+      "error": null
     },
     {
       "name": "Constructor > should create toast container if not exists",
@@ -268,108 +268,108 @@
     },
     {
       "name": "showNotification > should create and show toast with correct structure",
-      "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'showNotification')"
+      "status": "passed",
+      "error": null
     },
     {
       "name": "showNotification > should default to info type",
       "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'showNotification')"
+      "error": "Expected toast align-items-center text-white bg-success border-0 to contain bg-info"
     },
     {
       "name": "showNotification > should set ARIA attributes",
-      "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'showNotification')"
+      "status": "passed",
+      "error": null
     },
     {
       "name": "showNotification > should trigger Bootstrap toast show",
       "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'showNotification')"
+      "error": "window.bootstrap.Toast is not a constructor"
     },
     {
       "name": "showNotification > should auto-remove toast after hidden event",
       "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'showNotification')"
+      "error": "window.bootstrap.Toast is not a constructor"
     },
     {
       "name": "showSuccess > should show success notification",
       "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'showSuccess')"
+      "error": "window.bootstrap.Toast is not a constructor"
     },
     {
       "name": "showError > should show error notification",
       "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'showError')"
+      "error": "window.bootstrap.Toast is not a constructor"
     },
     {
       "name": "showWarning > should show warning notification",
       "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'showWarning')"
+      "error": "window.bootstrap.Toast is not a constructor"
     },
     {
       "name": "showInfo > should show info notification",
       "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'showInfo')"
+      "error": "window.bootstrap.Toast is not a constructor"
     },
     {
       "name": "Multiple Notifications > should handle multiple notifications",
       "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'showSuccess')"
+      "error": "window.bootstrap.Toast is not a constructor"
     },
     {
       "name": "Multiple Notifications > should maintain order of notifications",
       "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'showInfo')"
+      "error": "window.bootstrap.Toast is not a constructor"
     },
     {
       "name": "HTML Content Handling > should display HTML content in messages",
       "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'showInfo')"
+      "error": "window.bootstrap.Toast is not a constructor"
     },
     {
       "name": "HTML Content Handling > should handle special characters",
       "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'showInfo')"
+      "error": "window.bootstrap.Toast is not a constructor"
     },
     {
       "name": "Toast Positioning > should position toast container correctly",
-      "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'className')"
+      "status": "passed",
+      "error": null
     },
     {
       "name": "Bootstrap Integration > should handle missing Bootstrap gracefully",
-      "status": "failed",
-      "error": "Expected function not to throw"
+      "status": "passed",
+      "error": null
     },
     {
       "name": "Bootstrap Integration > should use Bootstrap classes correctly",
       "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'showNotification')"
+      "error": "window.bootstrap.Toast is not a constructor"
     },
     {
       "name": "Close Button Functionality > should include close button with correct attributes",
       "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'showNotification')"
+      "error": "window.bootstrap.Toast is not a constructor"
     },
     {
       "name": "Close Button Functionality > should trigger close when button clicked",
       "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'showNotification')"
+      "error": "window.bootstrap.Toast is not a constructor"
     },
     {
       "name": "Edge Cases > should handle empty messages",
       "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'showNotification')"
+      "error": "window.bootstrap.Toast is not a constructor"
     },
     {
       "name": "Edge Cases > should handle null messages",
       "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'showNotification')"
+      "error": "window.bootstrap.Toast is not a constructor"
     },
     {
       "name": "Edge Cases > should handle undefined type",
       "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'showNotification')"
+      "error": "window.bootstrap.Toast is not a constructor"
     },
     {
       "name": "Edge Cases > should handle very long messages",
@@ -379,17 +379,17 @@
     {
       "name": "Edge Cases > should handle invalid notification types",
       "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'showNotification')"
+      "error": "window.bootstrap.Toast is not a constructor"
     },
     {
       "name": "Cleanup > should properly clean up event listeners",
       "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'showNotification')"
+      "error": "window.bootstrap.Toast is not a constructor"
     },
     {
       "name": "Constructor > should initialize with correct dependencies",
       "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'notificationManager')"
+      "error": "Expected [object Object] to be undefined"
     },
     {
       "name": "Constructor > should initialize SocketIO",
@@ -399,7 +399,7 @@
     {
       "name": "generateSessionId > should generate unique session IDs",
       "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'generateSessionId')"
+      "error": "Expected video-session-1751182094041 to contain session_"
     },
     {
       "name": "SocketIO Integration > should handle socket connection",
@@ -414,47 +414,47 @@
     {
       "name": "handleVideoProgress > should ignore progress for different job",
       "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'handleVideoProgress')"
+      "error": "Cannot read properties of undefined (reading 'updateTypingIndicator')"
     },
     {
       "name": "handleVideoProgress > should handle progress updates",
       "status": "failed",
-      "error": "Cannot set properties of undefined (setting 'formatProgressMessage')"
+      "error": "Expected function to have been called with [\"generating_script\",\"Generating script...\",25,{\"script_preview\":\"Once upon a time...\"}]"
     },
     {
       "name": "handleVideoProgress > should handle completion",
       "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'handleVideoProgress')"
+      "error": "Cannot read properties of undefined (reading 'hideTypingIndicator')"
     },
     {
       "name": "handleVideoProgress > should handle failure",
       "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'handleVideoProgress')"
+      "error": "Cannot read properties of undefined (reading 'hideTypingIndicator')"
     },
     {
       "name": "formatProgressMessage > should format basic progress message",
       "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'formatProgressMessage')"
+      "error": "Expected 📝 Đang tạo kịch bản... to contain ✍️ Creating script... (30%)"
     },
     {
       "name": "formatProgressMessage > should format message without progress",
       "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'formatProgressMessage')"
+      "error": "Expected ⏳ Đang xử lý... to contain 🔧 Starting..."
     },
     {
       "name": "formatProgressMessage > should include script preview",
       "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'formatProgressMessage')"
+      "error": "Expected ⏳ Đang xử lý... to contain 📝 Script done (50%)"
     },
     {
       "name": "formatProgressMessage > should include audio file info",
       "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'formatProgressMessage')"
+      "error": "Expected ⏳ Đang xử lý... to contain 🔊 Audio ready (80%)"
     },
     {
       "name": "formatProgressMessage > should handle unknown step",
       "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'formatProgressMessage')"
+      "error": "Expected ⏳ Đang xử lý... to contain ⚙️ Unknown process (25%)"
     },
     {
       "name": "createVideo > should create video with default parameters",
@@ -484,7 +484,7 @@
     {
       "name": "downloadVideo > should trigger video download",
       "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'downloadVideo')"
+      "error": "Failed to execute 'appendChild' on 'Node': parameter 1 is not of type 'Node'."
     },
     {
       "name": "viewVideoDetail > should load and show video details",
@@ -504,7 +504,7 @@
     {
       "name": "showVideoDetailModal > should create and show modal with video details",
       "status": "failed",
-      "error": "Cannot set properties of undefined (setting 'escapeHtml')"
+      "error": "Failed to execute 'appendChild' on 'Node': parameter 1 is not of type 'Node'."
     },
     {
       "name": "showVideoDetailModal > should remove existing modal before creating new one",
@@ -524,22 +524,22 @@
     {
       "name": "showVideoCreationModal > should show prompt and create video",
       "status": "failed",
-      "error": "Cannot set properties of undefined (setting 'createVideo')"
+      "error": "Expected function to have been called with [\"Nhập chủ đề video bạn muốn tạo:\"]"
     },
     {
       "name": "showVideoCreationModal > should cancel if no topic entered",
       "status": "failed",
-      "error": "Cannot set properties of undefined (setting 'createVideo')"
+      "error": "Expected function not to have been called"
     },
     {
       "name": "escapeHtml > should escape HTML characters",
       "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'escapeHtml')"
+      "error": "Expected &lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt; to be &lt;script&gt;alert(\"xss\")&lt;/script&gt;"
     },
     {
       "name": "escapeHtml > should handle empty string",
-      "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'escapeHtml')"
+      "status": "passed",
+      "error": null
     },
     {
       "name": "Edge Cases > should handle SocketIO initialization failure",
@@ -549,7 +549,7 @@
     {
       "name": "Edge Cases > should handle missing video data in progress",
       "status": "failed",
-      "error": "Cannot set properties of undefined (setting 'currentVideoJob')"
+      "error": "Cannot read properties of undefined (reading 'addAIMessage')"
     },
     {
       "name": "Edge Cases > should handle very long topic names",

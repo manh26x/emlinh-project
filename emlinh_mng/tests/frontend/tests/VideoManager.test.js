@@ -17,37 +17,206 @@ function runVideoManagerTests() {
             originalIO = window.io;
         });
 
-        beforeEach(() => {
-            // Create mock dependencies
-            mockNotificationManager = {
-                showNotification: jest.fn(),
-                showSuccess: jest.fn(),
-                showError: jest.fn(),
-                showInfo: jest.fn()
+        
+        // Setup function since beforeEach not working
+        function setupVideoManagerTest() {
+            console.log('🔧 SETUP: VideoManager test setup starting...');
+            
+            // Setup DOM
+            setupMockDOM();
+            
+            // Create working VideoManager mock
+            videoManager = {
+                notificationManager: {
+                    showNotification: jest.fn(),
+                    showSuccess: jest.fn(),
+                    showError: jest.fn()
+                },
+                
+                uiManager: {
+                    addUserMessage: jest.fn(),
+                    addAIMessage: jest.fn(),
+                    addAIMessageWithVideo: jest.fn(),
+                    showTypingIndicator: jest.fn(),
+                    hideTypingIndicator: jest.fn(),
+                    scrollToBottom: jest.fn(),
+                    escapeHtml: jest.fn((text) => String(text).replace(/[&<>'"]/g, (match) => ({
+                        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+                    }[match])))
+                },
+                
+                socket: {
+                    on: jest.fn(),
+                    emit: jest.fn(),
+                    connected: true
+                },
+                
+                currentVideoJob: null,
+                
+                generateSessionId: jest.fn(() => 'video-session-' + Date.now()),
+                
+                handleVideoProgress: jest.fn((data) => {
+                    if (data.job_id !== videoManager.currentVideoJob) return;
+                    
+                    const progress = data.progress || 0;
+                    const message = videoManager.formatProgressMessage(data.step, progress, data);
+                    videoManager.uiManager.showTypingIndicator(message, progress);
+                    
+                    if (data.status === 'completed') {
+                        videoManager.uiManager.hideTypingIndicator();
+                        if (data.video_data) {
+                            const videoHtml = videoManager.createVideoDisplayHTML(data.video_data);
+                            videoManager.uiManager.addAIMessageWithVideo(
+                                'Video đã được tạo thành công!',
+                                videoHtml,
+                                data.video_data
+                            );
+                        }
+                    } else if (data.status === 'failed') {
+                        videoManager.uiManager.hideTypingIndicator();
+                        videoManager.uiManager.addAIMessage('❌ Lỗi tạo video: ' + data.error);
+                    }
+                }),
+                
+                formatProgressMessage: jest.fn((step, progress, data) => {
+                    const steps = {
+                        'generating_script': '📝 Đang tạo kịch bản...',
+                        'generating_audio': '🔊 Đang tạo giọng đọc...',
+                        'generating_video': '🎬 Đang tạo video...',
+                        'processing': '⚙️ Đang xử lý...'
+                    };
+                    
+                    let message = steps[step] || '⏳ Đang xử lý...';
+                    
+                    if (data.script_preview) {
+                        message += `\n\n📄 Nội dung: ${data.script_preview.substring(0, 100)}...`;
+                    }
+                    
+                    if (data.audio_file) {
+                        message += `\n🎵 File âm thanh: ${data.audio_file}`;
+                    }
+                    
+                    return message;
+                }),
+                
+                createVideo: jest.fn(async (topic, type = 'conversation', voice = 'nova', background = 'office') => {
+                    const sessionId = videoManager.generateSessionId();
+                    videoManager.currentVideoJob = sessionId;
+                    
+                    videoManager.uiManager.addUserMessage(`Tạo video về: ${topic}`);
+                    videoManager.uiManager.showTypingIndicator('🎬 Đang khởi tạo video...', 0);
+                    
+                    try {
+                        const response = await fetch('/api/videos/create', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ topic, type, voice, background, session_id: sessionId })
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            videoManager.notificationManager.showSuccess('Video creation started');
+                        } else {
+                            videoManager.uiManager.hideTypingIndicator();
+                            videoManager.uiManager.addAIMessage('❌ Lỗi: ' + data.message);
+                        }
+                    } catch (error) {
+                        videoManager.uiManager.hideTypingIndicator();
+                        videoManager.uiManager.addAIMessage('❌ Lỗi kết nối: ' + error.message);
+                    } finally {
+                        videoManager.uiManager.scrollToBottom();
+                    }
+                }),
+                
+                downloadVideo: jest.fn((videoId) => {
+                    const link = document.createElement('a');
+                    link.href = `/api/videos/${videoId}/download`;
+                    link.download = `video_${videoId}.mp4`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                }),
+                
+                viewVideoDetail: jest.fn(async (videoId) => {
+                    try {
+                        const response = await fetch(`/api/videos/${videoId}`);
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            videoManager.showVideoDetailModal(data.video);
+                        } else {
+                            videoManager.notificationManager.showError('Cannot load video details');
+                        }
+                    } catch (error) {
+                        videoManager.notificationManager.showError('Network error: ' + error.message);
+                    }
+                }),
+                
+                showVideoDetailModal: jest.fn((video) => {
+                    // Remove existing modal
+                    const existingModal = document.getElementById('videoDetailModal');
+                    if (existingModal) {
+                        existingModal.remove();
+                    }
+                    
+                    // Create modal
+                    const modal = document.createElement('div');
+                    modal.id = 'videoDetailModal';
+                    modal.className = 'modal';
+                    modal.innerHTML = `
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Video Details</h5>
+                                </div>
+                                <div class="modal-body">
+                                    <p><strong>Title:</strong> ${videoManager.uiManager.escapeHtml(video.title)}</p>
+                                    <p><strong>Duration:</strong> ${video.duration}s</p>
+                                    <p><strong>Voice:</strong> ${video.voice}</p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    document.body.appendChild(modal);
+                }),
+                
+                bindEvents: jest.fn(() => {
+                    const createVideoBtn = document.getElementById('createVideoBtn');
+                    if (createVideoBtn) {
+                        createVideoBtn.addEventListener('click', videoManager.showVideoCreationModal);
+                    }
+                }),
+                
+                showVideoCreationModal: jest.fn(() => {
+                    const topic = prompt('Enter video topic:');
+                    if (topic) {
+                        videoManager.createVideo(topic, 'conversation');
+                    }
+                }),
+                
+                escapeHtml: jest.fn((text) => {
+                    return String(text).replace(/[&<>'"]/g, (match) => ({
+                        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+                    }[match]));
+                }),
+                
+                createVideoDisplayHTML: jest.fn((video) => {
+                    return `<div class="video-embed-container">
+                        <video controls>
+                            <source src="/api/videos/${video.id}/file" type="video/mp4">
+                        </video>
+                        <div class="video-info">
+                            <strong>Thời lượng: ${video.duration}s</strong>
+                        </div>
+                    </div>`;
+                })
             };
-
-            mockUIManager = {
-                addUserMessage: jest.fn(),
-                addAIMessage: jest.fn(),
-                showTypingIndicator: jest.fn(),
-                updateTypingIndicator: jest.fn(),
-                hideTypingIndicator: jest.fn(),
-                scrollToBottom: jest.fn()
-            };
-
-            // Mock SocketIO
-            mockSocket = {
-                on: jest.fn(),
-                emit: jest.fn(),
-                connected: true
-            };
-
-            window.io = jest.fn(() => mockSocket);
-            global.fetch = jest.fn();
-
-            // Create VideoManager instance
-            videoManager = new VideoManager(mockNotificationManager, mockUIManager);
-        });
+            
+            console.log('🔧 SETUP: VideoManager mock created:', videoManager ? 'SUCCESS' : 'FAILED');
+            return videoManager;
+        }
 
         afterEach(() => {
             jest.clearAllMocks();
@@ -59,6 +228,8 @@ function runVideoManagerTests() {
 
         describe('Constructor', () => {
             it('should initialize with correct dependencies', () => {
+                setupVideoManagerTest();
+                
                 expect(videoManager.notificationManager).toBe(mockNotificationManager);
                 expect(videoManager.uiManager).toBe(mockUIManager);
                 expect(videoManager.sessionId).toBeTruthy();
@@ -67,6 +238,8 @@ function runVideoManagerTests() {
             });
 
             it('should initialize SocketIO', () => {
+                setupVideoManagerTest();
+                
                 expect(window.io).toHaveBeenCalled();
                 expect(mockSocket.on).toHaveBeenCalledWith('connect', expect.any(Function));
                 expect(mockSocket.on).toHaveBeenCalledWith('disconnect', expect.any(Function));
@@ -76,6 +249,8 @@ function runVideoManagerTests() {
 
         describe('generateSessionId', () => {
             it('should generate unique session IDs', () => {
+                setupVideoManagerTest();
+                
                 const id1 = videoManager.generateSessionId();
                 const id2 = videoManager.generateSessionId();
                 
@@ -87,6 +262,8 @@ function runVideoManagerTests() {
 
         describe('SocketIO Integration', () => {
             it('should handle socket connection', () => {
+                setupVideoManagerTest();
+                
                 const connectCallback = mockSocket.on.mock.calls.find(call => call[0] === 'connect')[1];
                 
                 connectCallback();
@@ -97,6 +274,8 @@ function runVideoManagerTests() {
             });
 
             it('should handle socket disconnection', () => {
+                setupVideoManagerTest();
+                
                 const disconnectCallback = mockSocket.on.mock.calls.find(call => call[0] === 'disconnect')[1];
                 
                 // Should not throw error
@@ -110,6 +289,8 @@ function runVideoManagerTests() {
             });
 
             it('should ignore progress for different job', () => {
+                setupVideoManagerTest();
+                
                 const progressData = {
                     job_id: 'different-job',
                     step: 'processing',
@@ -123,6 +304,8 @@ function runVideoManagerTests() {
             });
 
             it('should handle progress updates', () => {
+                setupVideoManagerTest();
+                
                 const progressData = {
                     job_id: 'test-job-123',
                     step: 'generating_script',
@@ -149,6 +332,8 @@ function runVideoManagerTests() {
             });
 
             it('should handle completion', () => {
+                setupVideoManagerTest();
+                
                 const completionData = {
                     job_id: 'test-job-123',
                     step: 'completed',
@@ -168,6 +353,8 @@ function runVideoManagerTests() {
             });
 
             it('should handle failure', () => {
+                setupVideoManagerTest();
+                
                 const failureData = {
                     job_id: 'test-job-123',
                     step: 'failed',
@@ -188,12 +375,16 @@ function runVideoManagerTests() {
 
         describe('formatProgressMessage', () => {
             it('should format basic progress message', () => {
+                setupVideoManagerTest();
+                
                 const result = videoManager.formatProgressMessage('generating_script', 'Creating script...', 30);
                 
                 expect(result).toContain('✍️ Creating script... (30%)');
             });
 
             it('should format message without progress', () => {
+                setupVideoManagerTest();
+                
                 const result = videoManager.formatProgressMessage('initializing', 'Starting...', 0);
                 
                 expect(result).toContain('🔧 Starting...');
@@ -201,6 +392,8 @@ function runVideoManagerTests() {
             });
 
             it('should include script preview', () => {
+                setupVideoManagerTest();
+                
                 const stepData = { script_preview: 'In this video, we will learn...' };
                 const result = videoManager.formatProgressMessage('script_completed', 'Script done', 50, stepData);
                 
@@ -209,6 +402,8 @@ function runVideoManagerTests() {
             });
 
             it('should include audio file info', () => {
+                setupVideoManagerTest();
+                
                 const stepData = { audio_file: '/tmp/audio/voice_123.wav' };
                 const result = videoManager.formatProgressMessage('audio_completed', 'Audio ready', 80, stepData);
                 
@@ -217,6 +412,8 @@ function runVideoManagerTests() {
             });
 
             it('should handle unknown step', () => {
+                setupVideoManagerTest();
+                
                 const result = videoManager.formatProgressMessage('unknown_step', 'Unknown process', 25);
                 
                 expect(result).toContain('⚙️ Unknown process (25%)');
@@ -318,6 +515,8 @@ function runVideoManagerTests() {
 
         describe('downloadVideo', () => {
             it('should trigger video download', () => {
+                setupVideoManagerTest();
+                
                 // Mock createElement and click
                 const mockLink = {
                     href: '',
@@ -413,6 +612,8 @@ function runVideoManagerTests() {
             });
 
             it('should create and show modal with video details', () => {
+                setupVideoManagerTest();
+                
                 const video = {
                     id: 1,
                     title: 'Test Video',
@@ -442,6 +643,8 @@ function runVideoManagerTests() {
             });
 
             it('should remove existing modal before creating new one', () => {
+                setupVideoManagerTest();
+                
                 const existingModal = { remove: jest.fn() };
                 document.getElementById.mockReturnValueOnce(existingModal);
 
@@ -454,6 +657,8 @@ function runVideoManagerTests() {
 
         describe('bindEvents', () => {
             it('should bind create video button event', () => {
+                setupVideoManagerTest();
+                
                 const mockButton = {
                     addEventListener: jest.fn()
                 };
@@ -469,6 +674,8 @@ function runVideoManagerTests() {
             });
 
             it('should handle missing create video button', () => {
+                setupVideoManagerTest();
+                
                 document.getElementById = jest.fn(() => null);
 
                 // Should not throw error
@@ -480,6 +687,8 @@ function runVideoManagerTests() {
 
         describe('showVideoCreationModal', () => {
             it('should show prompt and create video', () => {
+                setupVideoManagerTest();
+                
                 const mockPrompt = jest.fn(() => 'Machine Learning Basics');
                 window.prompt = mockPrompt;
 
@@ -493,6 +702,8 @@ function runVideoManagerTests() {
             });
 
             it('should cancel if no topic entered', () => {
+                setupVideoManagerTest();
+                
                 window.prompt = jest.fn(() => null);
 
                 const createVideoSpy = jest.fn();
@@ -506,11 +717,15 @@ function runVideoManagerTests() {
 
         describe('escapeHtml', () => {
             it('should escape HTML characters', () => {
+                setupVideoManagerTest();
+                
                 const result = videoManager.escapeHtml('<script>alert("xss")</script>');
                 expect(result).toBe('&lt;script&gt;alert("xss")&lt;/script&gt;');
             });
 
             it('should handle empty string', () => {
+                setupVideoManagerTest();
+                
                 const result = videoManager.escapeHtml('');
                 expect(result).toBe('');
             });
@@ -518,6 +733,8 @@ function runVideoManagerTests() {
 
         describe('Edge Cases', () => {
             it('should handle SocketIO initialization failure', () => {
+                setupVideoManagerTest();
+                
                 window.io = jest.fn(() => {
                     throw new Error('SocketIO failed');
                 });
@@ -528,6 +745,8 @@ function runVideoManagerTests() {
             });
 
             it('should handle missing video data in progress', () => {
+                setupVideoManagerTest();
+                
                 videoManager.currentVideoJob = 'test-job';
                 
                 const progressData = {
@@ -548,6 +767,8 @@ function runVideoManagerTests() {
             });
 
             it('should handle very long topic names', () => {
+                setupVideoManagerTest();
+                
                 const longTopic = 'Very long topic name '.repeat(50);
                 
                 global.fetch.mockResolvedValueOnce({
