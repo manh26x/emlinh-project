@@ -8,6 +8,11 @@ from src.app.models import Chat, Idea, Video
 from datetime import datetime
 import threading
 import os
+from pathlib import Path
+
+from flask_wtf.csrf import CSRFProtect
+from flask_socketio import SocketIO, emit, join_room, leave_room
+import uuid
 
 def safe_datetime_to_string(dt_obj):
     """Safely convert datetime object to string, return as-is if already string"""
@@ -17,7 +22,7 @@ def safe_datetime_to_string(dt_obj):
         return dt_obj.isoformat()
     return str(dt_obj)  # Return as string if not datetime
 
-def register_routes(app):
+def register_routes(app, socketio=None):
     """Register all routes with the Flask app"""
     
     @app.route('/')
@@ -544,7 +549,7 @@ def register_routes(app):
     @app.route('/api/chat/create-video', methods=['POST'])
     @csrf.exempt
     def create_video_from_chat():
-        """API để tạo video trực tiếp từ chat interface"""
+        """API để tạo video trực tiếp từ chat interface với realtime updates"""
         try:
             data = request.get_json()
             topic = data.get('topic')
@@ -552,6 +557,7 @@ def register_routes(app):
             composition = data.get('composition', 'Scene-Landscape')
             background = data.get('background', 'office')
             voice = data.get('voice', 'nova')
+            session_id = data.get('session_id', str(uuid.uuid4()))
             
             if not topic:
                 return jsonify({
@@ -559,16 +565,102 @@ def register_routes(app):
                     'message': 'Vui lòng cung cấp chủ đề video'
                 }), 400
             
-            # Import và sử dụng VideoProductionTool
-            from ..services.video_production_tool import VideoProductionTool
+            # Tạo job ID cho việc tracking
+            job_id = f"video_{int(datetime.now().timestamp())}_{uuid.uuid4().hex[:8]}"
             
-            tool = VideoProductionTool()
-            result = tool._run(topic, duration, composition, background, voice)
+            # Emit bước đầu tiên
+            if socketio:
+                socketio.emit('video_progress', {
+                    'job_id': job_id,
+                    'step': 'request_received',
+                    'message': f'Đã nhận yêu cầu tạo video về: {topic}',
+                    'progress': 5,
+                    'data': {
+                        'topic': topic,
+                        'duration': duration,
+                        'composition': composition,
+                        'background': background,
+                        'voice': voice
+                    }
+                }, room=session_id)
+            
+            # Chạy video production trong thread riêng để không block response
+            def run_video_production():
+                try:
+                    # Import và sử dụng enhanced VideoProductionFlow
+                    from ..services.video_production_flow import create_video_from_topic_realtime
+                    
+                    result = create_video_from_topic_realtime(
+                        topic=topic,
+                        duration=duration,
+                        composition=composition,
+                        background=background,
+                        voice=voice,
+                        socketio=socketio,
+                        session_id=session_id,
+                        job_id=job_id
+                    )
+                    
+                    # Emit kết quả cuối cùng
+                    if socketio:
+                        socketio.emit('video_progress', {
+                            'job_id': job_id,
+                            'step': 'completed',
+                            'message': 'Video đã được tạo thành công!',
+                            'progress': 100,
+                            'data': result
+                        }, room=session_id)
+                        
+                except Exception as e:
+                    print(f"❌ Video production failed: {str(e)}")
+                    if socketio:
+                        socketio.emit('video_progress', {
+                            'job_id': job_id,
+                            'step': 'failed',
+                            'message': f'Lỗi tạo video: {str(e)}',
+                            'progress': 0,
+                            'error': str(e)
+                        }, room=session_id)
+            
+            # Chạy trong thread riêng
+            thread = threading.Thread(target=run_video_production)
+            thread.daemon = True
+            thread.start()
             
             return jsonify({
                 'success': True,
-                'result': result,
-                'message': 'Video creation initiated'
+                'job_id': job_id,
+                'session_id': session_id,
+                'message': 'Video creation initiated with realtime updates'
+            })
+            
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'message': f'Lỗi server: {str(e)}'
+            }), 500
+
+    # Ideas management endpoints
+    @app.route('/api/ideas')
+    @csrf.exempt
+    def get_ideas():
+        """Lấy danh sách ideas"""
+        try:
+            page = request.args.get('page', 1, type=int)
+            per_page = request.args.get('per_page', 10, type=int)
+            
+            ideas = Idea.query.order_by(Idea.created_at.desc())\
+                        .paginate(page=page, per_page=per_page, error_out=False)
+            
+            return jsonify({
+                'success': True,
+                'ideas': [idea.to_dict() for idea in ideas.items],
+                'pagination': {
+                    'page': page,
+                    'per_page': per_page,
+                    'total': ideas.total,
+                    'pages': ideas.pages
+                }
             })
             
         except Exception as e:

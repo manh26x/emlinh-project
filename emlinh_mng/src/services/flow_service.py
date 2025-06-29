@@ -63,7 +63,7 @@ class FlowService:
                 app_context = None
             except RuntimeError:
                 from ..app.app import create_app
-                app = create_app()
+                app, _ = create_app()  # create_app returns (app, socketio)
                 app_context = app.app_context()
                 app_context.push()
             
@@ -173,37 +173,20 @@ class FlowService:
             intent = self._analyze_message_intent(user_message)
             
             if intent["type"] == "create_video":
-                # Tạo video với thông tin đã trích xuất
-                video_result = await self.create_video_with_flow_async(
-                    topic=intent["topic"],
-                    duration=intent.get("duration", 30),
-                    composition=intent.get("composition", "Scene-Portrait"),
-                    background=intent.get("background", "abstract"),
-                    voice=intent.get("voice", "fable")
-                )
+                # Redirect đến endpoint realtime để có progress updates
+                return json.dumps({
+                    "type": "redirect_video_creation",
+                    "message": f"Đang khởi tạo tạo video về: {intent['topic']}",
+                    "video_request": {
+                        "topic": intent["topic"],
+                        "duration": intent.get("duration", 30),
+                        "composition": intent.get("composition", "Scene-Portrait"),
+                        "background": intent.get("background", "abstract"),
+                        "voice": intent.get("voice", "fable")
+                    }
+                })
                 
-                # Trả về JSON response để frontend có thể hiển thị video
-                if video_result["success"]:
-                    return json.dumps({
-                        "type": "video_created",
-                        "message": video_result["message"],
-                        "video": {
-                            "id": video_result["video_id"],
-                            "url": video_result["video_url"],
-                            "path": video_result["video_path"],
-                            "script": video_result["script"],
-                            "duration": video_result["duration"],
-                            "composition": video_result["composition"],
-                            "background": video_result["background"],
-                            "voice": video_result["voice"]
-                        }
-                    })
-                else:
-                    return json.dumps({
-                        "type": "error",
-                        "message": video_result["message"],
-                        "error": video_result.get("error", "Unknown error")
-                    })
+
             
             else:
                 # Xử lý tin nhắn thường bằng LLM

@@ -98,6 +98,11 @@ class TTSService:
             os.remove(ogg_path)
             
             self.tts_jobs[job_id]['json_path'] = json_path
+            
+            # Lấy duration thực tế của file audio
+            actual_duration = self._get_audio_duration(wav_path)
+            self.tts_jobs[job_id]['actual_duration'] = actual_duration
+            
             self.tts_jobs[job_id]['status'] = 'completed'
             self.tts_jobs[job_id]['progress'] = 100
             self.tts_jobs[job_id]['end_time'] = datetime.now()

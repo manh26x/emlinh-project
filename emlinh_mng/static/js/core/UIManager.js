@@ -173,8 +173,50 @@ class UIManager {
         this.chatMessages.innerHTML = welcomeMessage;
     }
     
-    showTypingIndicator() {
+    showTypingIndicator(message = 'AI đang soạn tin nhắn...', progress = 0) {
         this.typingIndicator.style.display = 'block';
+        this.updateTypingIndicator(message, progress);
+        this.scrollToBottom();
+    }
+    
+    updateTypingIndicator(message, progress = 0) {
+        if (!this.typingIndicator) return;
+        
+        // Format message với line breaks
+        const formattedMessage = message.replace(/\n/g, '<br>');
+        
+        // Tạo progress bar nếu có progress
+        let progressHtml = '';
+        if (progress > 0) {
+            progressHtml = `
+                <div class="progress mt-2" style="height: 8px;">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary" 
+                         style="width: ${progress}%"></div>
+                </div>
+            `;
+        }
+        
+        this.typingIndicator.innerHTML = `
+            <div class="d-flex">
+                <div class="avatar bg-primary text-white rounded-circle me-2 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                    🤖
+                </div>
+                <div class="message-content">
+                    <div class="bg-light rounded p-3">
+                        <div class="typing-text">
+                            ${formattedMessage}
+                        </div>
+                        ${progressHtml}
+                        <div class="typing-dots mt-2">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
         this.scrollToBottom();
     }
     

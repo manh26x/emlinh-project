@@ -34,6 +34,7 @@ class VideoProductionState(BaseModel):
     video_id: Optional[int] = None
     audio_file: str = ""
     video_file: str = ""
+    actual_duration: Optional[float] = None  # Duration thực tế từ audio file
     
     # Status tracking
     current_step: str = "initialized"
@@ -290,7 +291,7 @@ QUAN TRỌNG:
             except RuntimeError:
                 # Tạo app context mới
                 from ..app.app import create_app
-                app = create_app()
+                app, _ = create_app()  # create_app returns (app, socketio)
                 app_context = app.app_context()
                 app_context.push()
             
@@ -338,42 +339,74 @@ QUAN TRỌNG:
     @listen(create_database_record)
     def start_tts_generation(self, record_data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Start Text-to-Speech generation
+        Start Text-to-Speech generation using TTSService with duration tracking
         
         Args:
             record_data: Data from database creation step
             
         Returns:
-            Dict containing TTS job information
+            Dict containing TTS job information with actual duration
         """
         try:
             print("🎤 Starting TTS generation...")
             self.state.current_step = "starting_tts"
             self.state.progress = 45.0
             
-            # Generate TTS với mouthCues JSON
-            audio_file = TTSUtils.generate_tts(
+            # Import TTSService
+            from ..services.tts_service import get_tts_service
+            tts_service = get_tts_service()
+            
+            # Generate TTS with job tracking
+            tts_job_id = tts_service.generate_speech(
                 text=self.state.script,
-                voice=self.state.voice
+                filename=f"video_{self.state.video_id}_audio"
             )
             
-            # Store audio file path
-            self.state.audio_file = audio_file
+            # Wait for TTS completion and get actual duration
+            import time
+            max_wait = 60  # Maximum wait time in seconds
+            wait_time = 0
             
-            print(f"✅ TTS generated: {audio_file}")
+            while wait_time < max_wait:
+                tts_status = tts_service.get_tts_status(tts_job_id)
+                
+                if tts_status['status'] == 'completed':
+                    # TTS completed successfully
+                    audio_file = tts_status['wav_path']
+                    actual_duration = tts_status.get('actual_duration', self.state.duration)
+                    
+                    # Update state with actual duration
+                    self.state.audio_file = audio_file
+                    self.state.actual_duration = actual_duration
+                    self.state.duration = int(actual_duration)  # Update duration với actual value
+                    
+                    print(f"✅ TTS generated: {audio_file}")
+                    print(f"📊 Actual duration: {actual_duration}s (was {self.state.duration}s)")
+                    
+                    # Kiểm tra mouthCues JSON
+                    json_path = tts_status['json_path']
+                    if os.path.exists(json_path):
+                        print(f"✅ MouthCues JSON created: {json_path}")
+                    else:
+                        print(f"⚠️ MouthCues JSON not found: {json_path}")
+                    
+                    return {
+                        "audio_file": audio_file,
+                        "actual_duration": actual_duration,
+                        "video_id": self.state.video_id,
+                        "tts_job_id": tts_job_id,
+                        "status": "tts_completed"
+                    }
+                    
+                elif tts_status['status'] == 'failed':
+                    raise Exception(f"TTS generation failed: {tts_status.get('error', 'Unknown error')}")
+                
+                # Wait a bit before checking again
+                time.sleep(1)
+                wait_time += 1
             
-            # Kiểm tra mouthCues JSON đã được tạo
-            json_path = audio_file.replace('.wav', '.json')
-            if os.path.exists(json_path):
-                print(f"✅ MouthCues JSON created: {json_path}")
-            else:
-                print(f"⚠️ MouthCues JSON not found: {json_path}")
-            
-            return {
-                "audio_file": audio_file,
-                "video_id": self.state.video_id,
-                "status": "tts_completed"
-            }
+            # Timeout
+            raise Exception(f"TTS generation timeout after {max_wait} seconds")
             
         except Exception as e:
             self.state.error_message = str(e)
@@ -397,10 +430,15 @@ QUAN TRỌNG:
             self.state.current_step = "starting_render"
             self.state.progress = 65.0
             
+            # Sử dụng actual duration nếu có, fallback to original duration
+            render_duration = self.state.actual_duration if self.state.actual_duration else self.state.duration
+            
+            print(f"🎬 Rendering video with actual duration: {render_duration}s")
+            
             # Start video rendering sử dụng VideoUtils đã cải thiện
             video_file = VideoUtils.render_video(
                 audio_file=self.state.audio_file,
-                duration=self.state.duration,
+                duration=render_duration,
                 composition=self.state.composition,
                 background=self.state.background,
                 topic=self.state.topic
@@ -449,7 +487,7 @@ QUAN TRỌNG:
                 app_context = None
             except RuntimeError:
                 from ..app.app import create_app
-                app = create_app()
+                app, _ = create_app()  # create_app returns (app, socketio)
                 app_context = app.app_context()
                 app_context.push()
             
@@ -459,6 +497,10 @@ QUAN TRỌNG:
                     video.file_path = self.state.video_file
                     video.file_name = self.state.video_file.split('/')[-1]
                     video.status = 'completed'
+                    
+                    # Update duration với actual duration từ audio
+                    if self.state.actual_duration:
+                        video.duration = int(self.state.actual_duration)
                     
                     # Get file size
                     if os.path.exists(self.state.video_file):
@@ -471,15 +513,16 @@ QUAN TRỌNG:
                 if app_context:
                     app_context.pop()
             
-            # Create structured response
+            # Create structured response with actual duration
+            final_duration = int(self.state.actual_duration) if self.state.actual_duration else self.state.duration
             response = VideoProductionResponse(
                 success=True,
-                message=f"Video về '{self.state.topic}' đã được tạo thành công!",
+                message=f"Video về '{self.state.topic}' đã được tạo thành công! (Thời lượng: {final_duration}s)",
                 video_id=self.state.video_id,
                 video_url=f"/api/videos/{self.state.video_id}/file",
                 video_path=self.state.video_file,
                 script=self.state.script,
-                duration=self.state.duration,
+                duration=final_duration,
                 composition=self.state.composition,
                 background=self.state.background,
                 voice=self.state.voice,
@@ -525,6 +568,7 @@ QUAN TRỌNG:
             "audio_file": self.state.audio_file,
             "video_path": self.state.video_file,
             "duration": self.state.duration,
+            "actual_duration": self.state.actual_duration,  # Thêm actual duration
             "composition": self.state.composition,
             "background": self.state.background,
             "voice": self.state.voice,
@@ -605,6 +649,145 @@ def demo_video_production():
         print(f"- Video ID: {result['video_id']}")
     if result.get('error_message'):
         print(f"- Lỗi: {result['error_message']}")
+
+
+def create_video_from_topic_realtime(
+    topic: str,
+    duration: int = 15,
+    composition: str = "Scene-Landscape", 
+    background: str = "office",
+    voice: str = "nova",
+    socketio=None,
+    session_id: str = "",
+    job_id: str = ""
+) -> Dict[str, Any]:
+    """
+    Hàm tạo video với realtime updates qua SocketIO
+    
+    Args:
+        topic: Chủ đề của video
+        duration: Thời lượng video (giây)
+        composition: Loại composition
+        background: Background scene
+        voice: Giọng đọc TTS
+        socketio: SocketIO instance để gửi updates
+        session_id: Session ID để gửi updates
+        job_id: Job ID để tracking
+        
+    Returns:
+        Dict chứa thông tin kết quả và trạng thái
+    """
+    
+    def emit_progress(step: str, message: str, progress: int, data: dict = None):
+        """Helper function để emit progress updates"""
+        if socketio:
+            socketio.emit('video_progress', {
+                'job_id': job_id,
+                'step': step,
+                'message': message,
+                'progress': progress,
+                'data': data or {}
+            }, room=session_id)
+    
+    try:
+        # Step 1: Khởi tạo flow
+        emit_progress('initializing', 'Đang khởi tạo quy trình tạo video...', 10)
+        
+        flow = VideoProductionFlow()
+        flow.state.topic = topic
+        flow.state.duration = duration
+        flow.state.composition = composition
+        flow.state.background = background
+        flow.state.voice = voice
+        
+        # Step 2: Bắt đầu tạo script
+        emit_progress('generating_script', 'Đang tạo bài thuyết trình...', 20)
+        
+        # Initialize production
+        init_result = flow.initialize_production()
+        
+        # Generate script
+        script_result = flow.generate_script(init_result)
+        emit_progress('script_completed', 
+                     f'Đã hoàn thành bài thuyết trình có độ dài {len(script_result["script"])} ký tự',
+                     35,
+                     {'script_preview': script_result["script"][:200] + "..." if len(script_result["script"]) > 200 else script_result["script"]})
+        
+        # Step 3: Tạo database record
+        emit_progress('creating_record', 'Đang tạo bản ghi video trong database...', 40)
+        
+        record_result = flow.create_database_record(script_result)
+        emit_progress('record_created', 
+                     f'Đã tạo bản ghi video với ID: {record_result["video_id"]}',
+                     45)
+        
+        # Step 4: Tạo file âm thanh
+        emit_progress('generating_audio', 
+                     f'Đang tạo file âm thanh với giọng đọc {voice}...',
+                     50)
+        
+        tts_result = flow.start_tts_generation(record_result)
+        
+        # Lấy actual duration từ TTS result
+        actual_duration = tts_result.get('actual_duration', duration)
+        actual_duration_str = f"{actual_duration:.1f}" if isinstance(actual_duration, float) else str(actual_duration)
+        
+        emit_progress('audio_completed', 
+                     f'Đã tạo xong file âm thanh có thời lượng thực tế {actual_duration_str} giây với giọng đọc {voice}',
+                     70,
+                     {
+                         'audio_file': tts_result.get('audio_file', ''),
+                         'actual_duration': actual_duration,
+                         'original_duration': duration
+                     })
+        
+        # Step 5: Render video
+        emit_progress('rendering_video', 
+                     f'Đang render video có thời lượng thực tế {actual_duration_str} giây, background: {background}, composition: {composition}...',
+                     75,
+                     {
+                         'actual_duration': actual_duration,
+                         'background': background,
+                         'composition': composition
+                     })
+        
+        render_result = flow.start_video_render(tts_result)
+        emit_progress('video_rendering', 
+                     f'Video đang được render với composition {composition} và thời lượng {actual_duration_str}s...',
+                     85)
+        
+        # Step 6: Finalize
+        emit_progress('finalizing', 'Đang hoàn thiện và lưu video...', 95)
+        
+        final_result = flow.finalize_production(render_result)
+        
+        # Tạo summary với actual duration information
+        summary = flow.get_production_summary()
+        
+        # Emit final completion message với thông tin chi tiết
+        if summary.get('success'):
+            final_actual_duration = summary.get('actual_duration') or actual_duration
+            final_duration_str = f"{final_actual_duration:.1f}" if isinstance(final_actual_duration, float) else str(final_actual_duration)
+            
+            completion_message = f'Video đã được tạo thành công! Thời lượng thực tế: {final_duration_str}s (dự kiến: {duration}s)'
+            emit_progress('completed', completion_message, 100, {
+                'video_id': summary.get('video_id'),
+                'actual_duration': final_actual_duration,
+                'original_duration': duration,
+                'topic': topic,
+                'final_result': summary
+            })
+        
+        return summary
+        
+    except Exception as e:
+        emit_progress('error', f'Lỗi trong quá trình tạo video: {str(e)}', 0)
+        print(f"🚨 [REALTIME] Lỗi nghiêm trọng trong Flow: {str(e)}")
+        return {
+            "success": False,
+            "error_message": f"Flow execution error: {str(e)}",
+            "current_step": "flow_failed"
+        }
 
 
 if __name__ == "__main__":

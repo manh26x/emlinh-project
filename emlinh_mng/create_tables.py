@@ -8,7 +8,7 @@ from src.app.models import Video, Chat, Idea, Vector, User
 
 def create_tables():
     """Tạo tất cả bảng trong database"""
-    app = create_app()
+    app, _ = create_app()
     
     with app.app_context():
         print("🔍 Kiểm tra database hiện tại...")

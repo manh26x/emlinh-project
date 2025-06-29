@@ -42,6 +42,9 @@ class ChatCore {
                     if (parsedResponse.type === 'video_created') {
                         // Hiển thị video đã tạo
                         this.handleVideoCreatedResponse(parsedResponse);
+                    } else if (parsedResponse.type === 'redirect_video_creation') {
+                        // Redirect đến video creation với realtime updates
+                        this.handleVideoCreationRedirect(parsedResponse);
                     } else if (parsedResponse.type === 'error') {
                         // Hiển thị lỗi
                         this.uiManager.addAIMessage(parsedResponse.message, data.timestamp);
@@ -88,6 +91,42 @@ class ChatCore {
         
         // Trigger video refresh event để cập nhật danh sách video
         window.dispatchEvent(new CustomEvent('videosUpdated'));
+    }
+    
+    async handleVideoCreationRedirect(responseData) {
+        const { message, video_request } = responseData;
+        
+        // Hiển thị message đầu tiên
+        this.uiManager.addAIMessage(message);
+        
+        // Bắt đầu video creation với realtime updates
+        try {
+            const response = await fetch('/api/chat/create-video', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    ...video_request,
+                    session_id: this.sessionManager.getSessionId()
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                console.log('✅ Video creation initiated with job_id:', result.job_id);
+                // Realtime updates sẽ được xử lý bởi SocketIO listeners
+            } else {
+                this.notificationManager.showError('❌ Lỗi khởi tạo tạo video: ' + result.message);
+                this.uiManager.addAIMessage('❌ Có lỗi xảy ra khi tạo video: ' + result.message);
+            }
+            
+        } catch (error) {
+            console.error('Video creation error:', error);
+            this.notificationManager.showError('❌ Lỗi kết nối khi tạo video');
+            this.uiManager.addAIMessage('❌ Lỗi kết nối khi tạo video: ' + error.message);
+        }
     }
     
     createVideoDisplayHTML(video) {

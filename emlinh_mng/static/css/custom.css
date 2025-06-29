@@ -214,3 +214,54 @@
     border-radius: 50%;
     animation: spin 1s linear infinite;
 }
+
+/* Typing indicator animation */
+.typing-dots {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.typing-dots span {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #6c757d;
+    opacity: 0.4;
+    animation: typing-dots 1.5s infinite;
+}
+
+.typing-dots span:nth-child(1) {
+    animation-delay: 0s;
+}
+
+.typing-dots span:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.typing-dots span:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes typing-dots {
+    0%, 60%, 100% {
+        transform: translateY(0);
+        opacity: 0.4;
+    }
+    30% {
+        transform: translateY(-10px);
+        opacity: 1;
+    }
+}
+
+/* Progress indicator styling */
+.typing-text {
+    font-size: 0.9em;
+    color: #495057;
+    line-height: 1.4;
+    margin-bottom: 8px;
+}
+
+.progress-bar-animated {
+    background: linear-gradient(45deg, #007bff, #6610f2);
+}
