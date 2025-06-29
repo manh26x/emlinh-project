@@ -4,7 +4,7 @@
   "skipped": 0,
   "total": 153,
   "coverage": 25,
-  "timestamp": "2025-06-29T06:42:00.139Z",
+  "timestamp": "2025-06-29T06:49:58.629Z",
   "results": [
     {
       "name": "Constructor > should initialize with correct dependencies",
