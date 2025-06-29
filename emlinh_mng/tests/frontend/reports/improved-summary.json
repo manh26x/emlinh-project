@@ -1,10 +1,10 @@
 {
-  "passed": 39,
-  "failed": 114,
+  "passed": 75,
+  "failed": 79,
   "skipped": 0,
-  "total": 153,
-  "coverage": 25,
-  "timestamp": "2025-06-29T06:49:58.629Z",
+  "total": 154,
+  "coverage": 49,
+  "timestamp": "2025-06-29T06:59:51.251Z",
   "results": [
     {
       "name": "Constructor > should initialize with correct dependencies",
@@ -68,188 +68,193 @@
     },
     {
       "name": "Constructor > should initialize DOM elements correctly",
-      "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'chatForm')"
+      "status": "passed",
+      "error": null
     },
     {
       "name": "addUserMessage > should add user message with correct format",
-      "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'addUserMessage')"
+      "status": "passed",
+      "error": null
     },
     {
       "name": "addUserMessage > should escape HTML in user messages",
-      "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'addUserMessage')"
+      "status": "passed",
+      "error": null
     },
     {
       "name": "addUserMessage > should include timestamp",
-      "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'addUserMessage')"
+      "status": "passed",
+      "error": null
     },
     {
       "name": "addAIMessage > should add AI message with correct format",
-      "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'addAIMessage')"
+      "status": "passed",
+      "error": null
     },
     {
       "name": "addAIMessage > should format message content",
-      "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'addAIMessage')"
+      "status": "passed",
+      "error": null
     },
     {
       "name": "addAIMessage > should handle timestamp conversion",
-      "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'addAIMessage')"
+      "status": "passed",
+      "error": null
+    },
+    {
+      "name": "addAIMessageWithVideo > should add AI message with video content",
+      "status": "passed",
+      "error": null
     },
     {
       "name": "formatMessage > should convert line breaks to <br>",
-      "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'formatMessage')"
+      "status": "passed",
+      "error": null
     },
     {
       "name": "formatMessage > should format bold text",
-      "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'formatMessage')"
+      "status": "passed",
+      "error": null
     },
     {
       "name": "formatMessage > should format italic text",
-      "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'formatMessage')"
+      "status": "passed",
+      "error": null
     },
     {
       "name": "formatMessage > should format code text",
-      "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'formatMessage')"
+      "status": "passed",
+      "error": null
     },
     {
       "name": "formatMessage > should detect and embed video ID patterns",
-      "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'formatMessage')"
+      "status": "passed",
+      "error": null
     },
     {
       "name": "formatMessage > should extract video title from message",
-      "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'formatMessage')"
+      "status": "passed",
+      "error": null
     },
     {
       "name": "formatMessage > should not embed video when no ID found",
-      "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'formatMessage')"
+      "status": "passed",
+      "error": null
     },
     {
       "name": "showError > should display error message as AI message",
-      "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'showError')"
+      "status": "passed",
+      "error": null
     },
     {
       "name": "clearChat > should clear all chat messages",
-      "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'addUserMessage')"
+      "status": "passed",
+      "error": null
     },
     {
       "name": "addWelcomeMessage > should add welcome message with features list",
-      "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'addWelcomeMessage')"
+      "status": "passed",
+      "error": null
     },
     {
       "name": "Typing Indicator > should show typing indicator",
-      "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'showTypingIndicator')"
+      "status": "passed",
+      "error": null
     },
     {
       "name": "Typing Indicator > should show typing indicator with custom message",
-      "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'showTypingIndicator')"
+      "status": "passed",
+      "error": null
     },
     {
       "name": "Typing Indicator > should update typing indicator with progress",
-      "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'updateTypingIndicator')"
+      "status": "passed",
+      "error": null
     },
     {
       "name": "Typing Indicator > should hide typing indicator",
-      "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'showTypingIndicator')"
+      "status": "passed",
+      "error": null
     },
     {
       "name": "Typing Indicator > should handle typing indicator with line breaks",
-      "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'updateTypingIndicator')"
+      "status": "passed",
+      "error": null
     },
     {
       "name": "Loading State > should set loading state on send button and input",
-      "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'setLoadingState')"
+      "status": "passed",
+      "error": null
     },
     {
       "name": "Loading State > should clear loading state",
-      "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'setLoadingState')"
+      "status": "passed",
+      "error": null
     },
     {
       "name": "Chat Type UI > should update placeholder for conversation type",
-      "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'updateChatTypeUI')"
+      "status": "passed",
+      "error": null
     },
     {
       "name": "Chat Type UI > should update placeholder for brainstorm type",
-      "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'updateChatTypeUI')"
+      "status": "passed",
+      "error": null
     },
     {
       "name": "Chat Type UI > should update placeholder for planning type",
-      "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'updateChatTypeUI')"
+      "status": "passed",
+      "error": null
     },
     {
       "name": "Message Input Management > should set message input value and focus",
-      "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'setMessageInput')"
+      "status": "passed",
+      "error": null
     },
     {
       "name": "Message Input Management > should get trimmed message input",
       "status": "failed",
-      "error": "Cannot set properties of null (setting 'value')"
+      "error": "Expected  to be test message"
     },
     {
       "name": "Message Input Management > should clear message input",
-      "status": "failed",
-      "error": "Cannot set properties of null (setting 'value')"
+      "status": "passed",
+      "error": null
     },
     {
       "name": "Scroll Management > should scroll to bottom",
-      "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'scrollToBottom')"
+      "status": "passed",
+      "error": null
     },
     {
       "name": "HTML Escaping > should escape HTML characters",
       "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'escapeHtml')"
+      "error": "Expected &lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;&amp;&lt;&gt;&quot;&#039; to be &lt;script&gt;alert(\"xss\")&lt;/script&gt;&amp;&lt;&gt;\"'"
     },
     {
       "name": "HTML Escaping > should handle empty string",
-      "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'escapeHtml')"
+      "status": "passed",
+      "error": null
     },
     {
       "name": "HTML Escaping > should handle null and undefined",
-      "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'escapeHtml')"
+      "status": "passed",
+      "error": null
     },
     {
       "name": "Edge Cases > should handle missing DOM elements gracefully",
-      "status": "failed",
-      "error": "Expected function not to throw"
+      "status": "passed",
+      "error": null
     },
     {
       "name": "Edge Cases > should handle very long messages",
-      "status": "failed",
-      "error": "Expected function not to throw"
+      "status": "passed",
+      "error": null
     },
     {
       "name": "Edge Cases > should handle special characters in messages",
-      "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'addUserMessage')"
+      "status": "passed",
+      "error": null
     },
     {
       "name": "Constructor > should initialize with toast container",
