@@ -1,0 +1,19 @@
+FROM ubuntu:22.04 AS debug
+
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y \
+    wget \
+    unzip \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /opt/rhubarb
+RUN wget https://github.com/DanielSWolf/rhubarb-lip-sync/releases/download/v1.13.0/rhubarb-lip-sync-1.13.0-linux.zip \
+    && unzip rhubarb-lip-sync-1.13.0-linux.zip \
+    && echo "=== Directory listing after unzip ===" \
+    && ls -la \
+    && echo "=== Finding all files ===" \
+    && find . -type f \
+    && echo "=== Finding rhubarb executable ===" \
+    && find . -name "rhubarb" -type f \
+    && echo "=== Checking permissions ===" \
+    && find . -name "rhubarb" -type f -exec ls -la {} \; 

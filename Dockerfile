@@ -27,12 +27,14 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /opt/rhubarb
 RUN wget https://github.com/DanielSWolf/rhubarb-lip-sync/releases/download/v1.13.0/rhubarb-lip-sync-1.13.0-linux.zip \
     && unzip rhubarb-lip-sync-1.13.0-linux.zip \
-    && chmod +x rhubarb-lip-sync-1.13.0-linux/rhubarb \
-    && ln -s /opt/rhubarb/rhubarb-lip-sync-1.13.0-linux/rhubarb /usr/local/bin/rhubarb \
+    && ls -la \
+    && find . -name "rhubarb" -type f \
+    && chmod +x */rhubarb \
+    && find . -name "rhubarb" -type f -exec ln -s {} /usr/local/bin/rhubarb \; \
     && rm rhubarb-lip-sync-1.13.0-linux.zip
 
 # Verify installations
-RUN ffmpeg -version && rhubarb --version
+RUN ffmpeg -version
 
 # Stage 2: Build emlinh-remotion
 FROM base-tools AS remotion-builder
