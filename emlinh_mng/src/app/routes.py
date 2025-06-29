@@ -48,11 +48,26 @@ def register_routes(app, socketio=None):
 
     @app.route('/health')
     def health_check():
-        """Health check endpoint"""
-        return jsonify({
-            'status': 'healthy',
-            'database': 'connected' if db.engine else 'disconnected'
-        })
+        """Health check endpoint for Docker và load balancer"""
+        try:
+            # Kiểm tra database connection
+            from src.app.models import db
+            db.session.execute('SELECT 1')
+            
+            return {
+                'status': 'healthy',
+                'timestamp': datetime.utcnow().isoformat(),
+                'services': {
+                    'database': 'up',
+                    'flask': 'up'
+                }
+            }, 200
+        except Exception as e:
+            return {
+                'status': 'unhealthy',
+                'timestamp': datetime.utcnow().isoformat(),
+                'error': str(e)
+            }, 503
 
     # Video management endpoints
     @app.route('/api/videos')
