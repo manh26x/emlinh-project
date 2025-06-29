@@ -1,10 +1,10 @@
 {
-  "passed": 46,
-  "failed": 114,
+  "passed": 39,
+  "failed": 115,
   "skipped": 0,
-  "total": 160,
-  "coverage": 29,
-  "timestamp": "2025-06-29T06:19:31.821Z",
+  "total": 154,
+  "coverage": 25,
+  "timestamp": "2025-06-29T06:25:17.095Z",
   "results": [
     {
       "name": "Constructor > should initialize with correct dependencies",
@@ -27,16 +27,6 @@
       "error": null
     },
     {
-      "name": "sendMessage > should handle JSON video response",
-      "status": "passed",
-      "error": null
-    },
-    {
-      "name": "sendMessage > should handle video creation redirect",
-      "status": "passed",
-      "error": null
-    },
-    {
       "name": "sendMessage > should handle API errors gracefully",
       "status": "passed",
       "error": null
@@ -47,19 +37,9 @@
       "error": null
     },
     {
-      "name": "sendMessage > should handle idea creation notification",
-      "status": "passed",
-      "error": null
-    },
-    {
       "name": "setMessageType > should set message type and update UI",
       "status": "failed",
       "error": "Cannot read properties of undefined (reading 'setMessageType')"
-    },
-    {
-      "name": "useQuickPrompt > should set message type and input, then auto-send",
-      "status": "passed",
-      "error": null
     },
     {
       "name": "setLoading > should update loading state",
@@ -82,19 +62,9 @@
       "error": "Cannot read properties of undefined (reading 'truncateText')"
     },
     {
-      "name": "Edge Cases > should handle invalid JSON in AI response",
-      "status": "passed",
-      "error": null
-    },
-    {
-      "name": "Edge Cases > should handle empty message input after trim",
-      "status": "passed",
-      "error": null
-    },
-    {
-      "name": "Edge Cases > should handle concurrent message sending",
-      "status": "passed",
-      "error": null
+      "name": "useQuickPrompt > should set message type and input, then auto-send",
+      "status": "failed",
+      "error": "Cannot read properties of undefined (reading 'useQuickPrompt')"
     },
     {
       "name": "Constructor > should initialize DOM elements correctly",
@@ -583,8 +553,8 @@
     },
     {
       "name": "Edge Cases > should handle very long topic names",
-      "status": "failed",
-      "error": "global.fetch.mockResolvedValueOnce is not a function"
+      "status": "passed",
+      "error": null
     },
     {
       "name": "copyToClipboard > should copy text to clipboard successfully",
@@ -668,8 +638,8 @@
     },
     {
       "name": "generateRandomId > should generate random ID with prefix",
-      "status": "passed",
-      "error": null
+      "status": "failed",
+      "error": "expect(...).toBeGreaterThan is not a function"
     },
     {
       "name": "generateRandomId > should generate random ID with default prefix",
