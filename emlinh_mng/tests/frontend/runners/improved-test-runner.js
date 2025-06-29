@@ -482,7 +482,7 @@ async function runTests() {
     console.log('\n📁 Loading test files...');
     const testFiles = [
         'tests/ChatCore.test.simplified.js', 
-        'tests/UIManager.test.js',
+        'tests/UIManager.test.simplified.js',
         'tests/NotificationManager.test.js',
         'tests/VideoManager.test.js',
         'tests/ChatUtils.test.js',

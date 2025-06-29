@@ -1,10 +1,10 @@
 {
   "passed": 39,
-  "failed": 115,
+  "failed": 114,
   "skipped": 0,
-  "total": 154,
+  "total": 153,
   "coverage": 25,
-  "timestamp": "2025-06-29T06:35:06.173Z",
+  "timestamp": "2025-06-29T06:42:00.139Z",
   "results": [
     {
       "name": "Constructor > should initialize with correct dependencies",
@@ -94,17 +94,12 @@
     {
       "name": "addAIMessage > should format message content",
       "status": "failed",
-      "error": "Cannot set properties of undefined (setting 'formatMessage')"
+      "error": "Cannot read properties of undefined (reading 'addAIMessage')"
     },
     {
       "name": "addAIMessage > should handle timestamp conversion",
       "status": "failed",
       "error": "Cannot read properties of undefined (reading 'addAIMessage')"
-    },
-    {
-      "name": "addAIMessageWithVideo > should add AI message with video content",
-      "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'addAIMessageWithVideo')"
     },
     {
       "name": "formatMessage > should convert line breaks to <br>",
@@ -169,7 +164,7 @@
     {
       "name": "Typing Indicator > should update typing indicator with progress",
       "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'showTypingIndicator')"
+      "error": "Cannot read properties of undefined (reading 'updateTypingIndicator')"
     },
     {
       "name": "Typing Indicator > should hide typing indicator",
@@ -209,22 +204,22 @@
     {
       "name": "Message Input Management > should set message input value and focus",
       "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'messageInput')"
+      "error": "Cannot read properties of undefined (reading 'setMessageInput')"
     },
     {
       "name": "Message Input Management > should get trimmed message input",
       "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'messageInput')"
+      "error": "Cannot set properties of null (setting 'value')"
     },
     {
       "name": "Message Input Management > should clear message input",
       "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'messageInput')"
+      "error": "Cannot set properties of null (setting 'value')"
     },
     {
       "name": "Scroll Management > should scroll to bottom",
       "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'messagesContainer')"
+      "error": "Cannot read properties of undefined (reading 'scrollToBottom')"
     },
     {
       "name": "HTML Escaping > should escape HTML characters",
@@ -244,7 +239,7 @@
     {
       "name": "Edge Cases > should handle missing DOM elements gracefully",
       "status": "failed",
-      "error": "Cannot read properties of undefined (reading 'filter')"
+      "error": "Expected function not to throw"
     },
     {
       "name": "Edge Cases > should handle very long messages",
