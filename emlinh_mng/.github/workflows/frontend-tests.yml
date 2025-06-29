@@ -1,0 +1,213 @@
+name: Frontend Unit Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'static/js/**'
+      - 'tests/frontend/**'
+      - '.github/workflows/frontend-tests.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'static/js/**'
+      - 'tests/frontend/**'
+
+jobs:
+  frontend-tests:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [16.x, 18.x, 20.x]
+        browser: [chrome, firefox]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: |
+        npm install -g playwright
+        npm install puppeteer jsdom
+
+    - name: Setup Python for backend health check
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    - name: Install Python dependencies
+      run: |
+        pip install -r requirements.txt
+
+    - name: Start backend server for integration tests
+      run: |
+        cd src/app
+        python run.py &
+        echo $! > server.pid
+        sleep 10  # Wait for server to start
+      env:
+        FLASK_ENV: testing
+
+    - name: Run Frontend Unit Tests
+      run: |
+        node tests/frontend/runners/node-test-runner.js
+      env:
+        BROWSER: ${{ matrix.browser }}
+        NODE_ENV: test
+
+    - name: Run Browser Tests
+      run: |
+        node tests/frontend/runners/browser-test-runner.js
+      env:
+        BROWSER: ${{ matrix.browser }}
+
+    - name: Generate Test Report
+      run: |
+        node tests/frontend/reporters/test-reporter.js
+      if: always()
+
+    - name: Upload Test Results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: test-results-${{ matrix.node-version }}-${{ matrix.browser }}
+        path: |
+          tests/frontend/reports/
+          tests/frontend/coverage/
+
+    - name: Upload Coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: tests/frontend/coverage/lcov.info
+        flags: frontend
+        name: frontend-${{ matrix.node-version }}-${{ matrix.browser }}
+
+    - name: Stop backend server
+      run: |
+        if [ -f src/app/server.pid ]; then
+          kill $(cat src/app/server.pid) || true
+          rm src/app/server.pid
+        fi
+      if: always()
+
+    - name: Comment PR with test results
+      uses: actions/github-script@v6
+      if: github.event_name == 'pull_request' && always()
+      with:
+        script: |
+          const fs = require('fs');
+          const path = 'tests/frontend/reports/summary.json';
+          
+          if (fs.existsSync(path)) {
+            const summary = JSON.parse(fs.readFileSync(path, 'utf8'));
+            const { passed, failed, total, coverage } = summary;
+            
+            const status = failed === 0 ? '✅' : '❌';
+            const body = `## ${status} Frontend Test Results
+            
+            **Node.js:** ${{ matrix.node-version }} | **Browser:** ${{ matrix.browser }}
+            
+            - **Passed:** ${passed}/${total} tests
+            - **Failed:** ${failed} tests  
+            - **Coverage:** ${coverage}%
+            
+            ${failed > 0 ? '⚠️ Some tests failed. Please check the details above.' : '🎉 All tests passed!'}
+            `;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+          }
+
+  health-check:
+    runs-on: ubuntu-latest
+    needs: frontend-tests
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    - name: Install dependencies
+      run: pip install -r requirements.txt
+
+    - name: Start server
+      run: |
+        cd src/app
+        python run.py &
+        echo $! > server.pid
+        sleep 10
+
+    - name: Health Check Tests
+      run: |
+        # Test /health endpoint
+        curl -f http://localhost:5000/health || exit 1
+        
+        # Test /api/chat/send endpoint structure
+        response=$(curl -s -X POST http://localhost:5000/api/chat/send \
+          -H "Content-Type: application/json" \
+          -d '{"message":"test","session_id":"test","type":"conversation"}')
+        
+        echo "API Response: $response"
+        
+        # Verify response structure
+        if echo "$response" | grep -q '"success"'; then
+          echo "✅ API health check passed"
+        else
+          echo "❌ API health check failed"
+          exit 1
+        fi
+
+    - name: Stop server
+      run: |
+        if [ -f src/app/server.pid ]; then
+          kill $(cat src/app/server.pid) || true
+        fi
+      if: always()
+
+  security-check:
+    runs-on: ubuntu-latest
+    needs: frontend-tests
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18.x'
+
+    - name: Install security tools
+      run: |
+        npm install -g eslint
+        npm install eslint-plugin-security
+
+    - name: Run security linting
+      run: |
+        # Check for security vulnerabilities in JS code
+        eslint static/js/**/*.js --config tests/frontend/config/security.eslintrc.js
+
+    - name: Check for hardcoded secrets
+      run: |
+        # Simple grep for common secret patterns
+        if grep -r -i "password\|secret\|key\|token" static/js/ --include="*.js" | grep -v "//.*password\|console.log"; then
+          echo "⚠️ Potential hardcoded secrets found"
+          exit 1
+        else
+          echo "✅ No hardcoded secrets detected"
+        fi

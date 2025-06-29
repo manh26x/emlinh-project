@@ -1,0 +1,41 @@
+{
+  "name": "emlinh-ai-assistant-tests",
+  "version": "1.0.0",
+  "description": "Frontend unit tests for Emlinh AI Assistant",
+  "scripts": {
+    "test": "node tests/frontend/runners/node-test-runner.js",
+    "test:browser": "node tests/frontend/runners/browser-test-runner.js",
+    "test:watch": "nodemon --watch static/js --watch tests/frontend --exec npm test",
+    "test:coverage": "node tests/frontend/reporters/coverage-reporter.js",
+    "lint": "eslint static/js/**/*.js",
+    "lint:fix": "eslint static/js/**/*.js --fix",
+    "security": "eslint static/js/**/*.js --config tests/frontend/config/security.eslintrc.js",
+    "ci": "npm test && npm run security"
+  },
+  "dependencies": {
+    "jsdom": "^22.1.0",
+    "puppeteer": "^21.1.1",
+    "playwright": "^1.37.1"
+  },
+  "devDependencies": {
+    "eslint": "^8.48.0",
+    "eslint-plugin-security": "^1.7.1",
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "keywords": [
+    "frontend",
+    "unit-tests",
+    "javascript",
+    "testing",
+    "ai-assistant"
+  ],
+  "author": "Emlinh Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/manh26x/emlinh-project.git"
+  }
+}
