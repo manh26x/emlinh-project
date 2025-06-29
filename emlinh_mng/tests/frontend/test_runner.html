@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unit Tests - Emlinh AI Assistant</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .test-suite { margin-bottom: 2rem; }
+        .test-result { margin: 0.5rem 0; padding: 0.5rem; border-radius: 0.25rem; }
+        .test-pass { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .test-fail { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .test-skip { background-color: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        .test-stats { background-color: #f8f9fa; padding: 1rem; border-radius: 0.5rem; margin-bottom: 2rem; }
+        .console-output { background-color: #1e1e1e; color: #d4d4d4; padding: 1rem; border-radius: 0.25rem; font-family: 'Courier New', monospace; }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <h1 class="mb-4">
+                    <i class="fas fa-flask"></i>
+                    Unit Tests - Emlinh AI Assistant
+                </h1>
+                
+                <div class="test-stats">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <h5 class="text-success">Passed: <span id="passedCount">0</span></h5>
+                        </div>
+                        <div class="col-md-3">
+                            <h5 class="text-danger">Failed: <span id="failedCount">0</span></h5>
+                        </div>
+                        <div class="col-md-3">
+                            <h5 class="text-warning">Skipped: <span id="skippedCount">0</span></h5>
+                        </div>
+                        <div class="col-md-3">
+                            <h5>Total: <span id="totalCount">0</span></h5>
+                        </div>
+                    </div>
+                    <div class="progress mt-3">
+                        <div class="progress-bar bg-success" id="progressBar" style="width: 0%"></div>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <button class="btn btn-primary" onclick="runAllTests()">
+                        <i class="fas fa-play"></i> Chạy tất cả Tests
+                    </button>
+                    <button class="btn btn-secondary" onclick="clearResults()">
+                        <i class="fas fa-trash"></i> Xóa kết quả
+                    </button>
+                    <button class="btn btn-info" onclick="exportResults()">
+                        <i class="fas fa-download"></i> Export kết quả
+                    </button>
+                </div>
+                
+                <div id="testResults"></div>
+                
+                <div class="mt-4">
+                    <h3>Console Output</h3>
+                    <div class="console-output" id="consoleOutput"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.4/socket.io.js"></script>
+
+    <!-- Mock Dependencies -->
+    <script src="mocks/bootstrap-mock.js"></script>
+    <script src="mocks/dom-mock.js"></script>
+
+    <!-- Source Files -->
+    <script src="../../static/js/core/ChatCore.js"></script>
+    <script src="../../static/js/core/UIManager.js"></script>
+    <script src="../../static/js/core/NotificationManager.js"></script>
+    <script src="../../static/js/core/SessionManager.js"></script>
+    <script src="../../static/js/modules/VideoManager.js"></script>
+    <script src="../../static/js/modules/IdeaManager.js"></script>
+    <script src="../../static/js/utils/ChatUtils.js"></script>
+
+    <!-- Test Framework -->
+    <script src="framework/test-framework.js"></script>
+
+    <!-- Test Files -->
+    <script src="tests/ChatCore.test.js"></script>
+    <script src="tests/UIManager.test.js"></script>
+    <script src="tests/NotificationManager.test.js"></script>
+    <script src="tests/VideoManager.test.js"></script>
+    <script src="tests/ChatUtils.test.js"></script>
+    <script src="tests/Integration.test.js"></script>
+
+    <script>
+        // Global test runner
+        let testStats = { passed: 0, failed: 0, skipped: 0, total: 0 };
+        
+        function runAllTests() {
+            clearResults();
+            const suites = [
+                'ChatCore Tests',
+                'UIManager Tests', 
+                'NotificationManager Tests',
+                'VideoManager Tests',
+                'ChatUtils Tests',
+                'Integration Tests'
+            ];
+            
+            console.log('🚀 Starting test execution...');
+            
+            suites.forEach(suite => {
+                const suiteName = suite.replace(' Tests', '');
+                if (window[`run${suiteName}Tests`]) {
+                    window[`run${suiteName}Tests`]();
+                }
+            });
+            
+            updateStats();
+        }
+        
+        function clearResults() {
+            document.getElementById('testResults').innerHTML = '';
+            document.getElementById('consoleOutput').innerHTML = '';
+            testStats = { passed: 0, failed: 0, skipped: 0, total: 0 };
+            updateStats();
+        }
+        
+        function updateStats() {
+            document.getElementById('passedCount').textContent = testStats.passed;
+            document.getElementById('failedCount').textContent = testStats.failed;
+            document.getElementById('skippedCount').textContent = testStats.skipped;
+            document.getElementById('totalCount').textContent = testStats.total;
+            
+            const passRate = testStats.total > 0 ? (testStats.passed / testStats.total) * 100 : 0;
+            document.getElementById('progressBar').style.width = passRate + '%';
+        }
+        
+        function exportResults() {
+            const results = {
+                timestamp: new Date().toISOString(),
+                stats: testStats,
+                results: Array.from(document.querySelectorAll('.test-result')).map(el => ({
+                    name: el.textContent,
+                    status: el.classList.contains('test-pass') ? 'pass' : 
+                           el.classList.contains('test-fail') ? 'fail' : 'skip'
+                }))
+            };
+            
+            const blob = new Blob([JSON.stringify(results, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `test-results-${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        // Capture console logs
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+        
+        function logToConsole(type, ...args) {
+            const output = document.getElementById('consoleOutput');
+            const timestamp = new Date().toLocaleTimeString();
+            const message = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : arg).join(' ');
+            output.innerHTML += `<div>[${timestamp}] ${type.toUpperCase()}: ${message}</div>`;
+            output.scrollTop = output.scrollHeight;
+        }
+        
+        console.log = (...args) => {
+            originalLog.apply(console, args);
+            logToConsole('log', ...args);
+        };
+        
+        console.error = (...args) => {
+            originalError.apply(console, args);
+            logToConsole('error', ...args);
+        };
+        
+        console.warn = (...args) => {
+            originalWarn.apply(console, args);
+            logToConsole('warn', ...args);
+        };
+    </script>
+</body>
+</html>
