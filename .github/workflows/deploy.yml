@@ -75,6 +75,7 @@ jobs:
         SECRET_KEY=${{ secrets.SECRET_KEY }}
         DATABASE_URL=${{ secrets.DATABASE_URL }}
         OLLAMA_BASE_URL=${{ secrets.OLLAMA_BASE_URL }}
+        OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
         FLASK_ENV=production
         EOFENV
 
