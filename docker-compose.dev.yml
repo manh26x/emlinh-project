@@ -7,6 +7,8 @@ services:
       - FLASK_ENV=development
       - DEBUG=true
       - SQLALCHEMY_ECHO=true
+      - DATABASE_URL=postgresql://dev_user:dev_password@192.168.1.10:5432/emlinh_dev_db
+      - OLLAMA_BASE_URL=http://192.168.1.10:11434
     volumes:
       # Mount source code để hot reload
       - ./emlinh_mng:/app/emlinh_mng
@@ -20,12 +22,3 @@ services:
   nginx:
     # Disable nginx trong dev mode để truy cập trực tiếp
     profiles: ["production"]
-
-  # Lightweight DB cho development
-  postgres:
-    environment:
-      POSTGRES_DB: emlinh_dev_db
-      POSTGRES_USER: dev_user
-      POSTGRES_PASSWORD: dev_password
-    ports:
-      - "5433:5432"  # Expose port cho external tools
