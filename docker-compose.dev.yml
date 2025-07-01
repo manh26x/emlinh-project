@@ -1,4 +1,5 @@
 # Development override cho docker-compose.yml
+# Sử dụng: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
 services:
   emlinh_app:
     build:
@@ -7,6 +8,7 @@ services:
       - FLASK_ENV=development
       - DEBUG=true
       - SQLALCHEMY_ECHO=true
+      # Có thể sử dụng cùng PostgreSQL service: postgresql://emlinh_user:emlinh_password@postgres:5432/emlinh_db
       - DATABASE_URL=postgresql://dev_user:dev_password@192.168.1.10:5432/emlinh_dev_db
       - OLLAMA_BASE_URL=http://192.168.1.10:11434
     volumes:
