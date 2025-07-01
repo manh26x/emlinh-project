@@ -23,6 +23,11 @@ class Config:
     OLLAMA_EMBED_MODEL = os.environ.get('OLLAMA_EMBED_MODEL') or 'nomic-embed-text'
     EMBEDDING_DIMENSION = int(os.environ.get('EMBEDDING_DIMENSION', '768'))
     
+    # Facebook API Configuration
+    FACEBOOK_ACCESS_TOKEN = os.environ.get('FACEBOOK_ACCESS_TOKEN')
+    FACEBOOK_API_VERSION = os.environ.get('FACEBOOK_API_VERSION') or 'v18.0'
+    FACEBOOK_BASE_URL = f"https://graph.facebook.com/{FACEBOOK_API_VERSION if FACEBOOK_API_VERSION else 'v18.0'}"
+    
     @staticmethod
     def init_app(app):
         """Initialize application with this configuration"""
