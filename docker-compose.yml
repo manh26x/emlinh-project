@@ -10,6 +10,7 @@ services:
       - DATABASE_URL=${DATABASE_URL}
       - SECRET_KEY=${SECRET_KEY:-your-secret-key-here}
       - OLLAMA_BASE_URL=http://192.168.1.10:11434
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
     ports:
       - "5000:5000"  # Flask app
       - "3000:3000"  # Remotion studio
