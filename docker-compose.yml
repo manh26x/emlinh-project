@@ -1,4 +1,23 @@
 services:
+  # PostgreSQL database service
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-emlinh_db}
+      - POSTGRES_USER=${POSTGRES_USER:-emlinh_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-emlinh_password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - emlinh_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-emlinh_user} -d ${POSTGRES_DB:-emlinh_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
   # Main application service
   emlinh_app:
     build:
@@ -7,7 +26,7 @@ services:
       target: production
     environment:
       - FLASK_ENV=production
-      - DATABASE_URL=postgresql://emlinh_user:emlinh_password@192.168.1.10:5432/emlinh_db
+      - DATABASE_URL=postgresql://emlinh_user:emlinh_password@postgres:5432/emlinh_db
       - SECRET_KEY=${SECRET_KEY:-your-secret-key-here}
       - OLLAMA_BASE_URL=http://192.168.1.10:11434
     ports:
@@ -20,6 +39,9 @@ services:
     networks:
       - emlinh_network
     restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
       interval: 30s
@@ -44,6 +66,7 @@ services:
 
 volumes:
   app_data:
+  postgres_data:
 
 networks:
   emlinh_network:
