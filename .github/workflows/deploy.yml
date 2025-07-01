@@ -81,7 +81,6 @@ jobs:
     - name: Create necessary directories
       run: |
         mkdir -p public/audios public/models ssl
-        sudo chown -R $USER:$USER public ssl
 
     - name: Stop existing containers
       run: |
