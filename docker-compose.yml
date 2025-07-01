@@ -7,7 +7,7 @@ services:
       target: production
     environment:
       - FLASK_ENV=production
-      - DATABASE_URL=postgresql://emlinh_user:emlinh_password@192.168.1.10:5432/emlinh_db
+      - DATABASE_URL=${DATABASE_URL}
       - SECRET_KEY=${SECRET_KEY:-your-secret-key-here}
       - OLLAMA_BASE_URL=http://192.168.1.10:11434
     ports:
