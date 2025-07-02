@@ -113,10 +113,10 @@ echo "Starting emlinh application..."
 # Fix permissions first
 /app/fix-permissions.sh
 
-# Create required directories
-mkdir -p /app/emlinh-remotion/out
-mkdir -p /app/emlinh-remotion/public/audios
-mkdir -p /tmp/emlinh_audio
+# Create required directories only if they don't exist and are writable
+[ ! -d "/app/emlinh-remotion/out" ] && mkdir -p /app/emlinh-remotion/out 2>/dev/null || true
+[ ! -d "/app/emlinh-remotion/public/audios" ] && mkdir -p /app/emlinh-remotion/public/audios 2>/dev/null || true
+[ ! -d "/tmp/emlinh_audio" ] && mkdir -p /tmp/emlinh_audio 2>/dev/null || true
 
 # Start emlinh-remotion in background
 echo "Starting Remotion studio..."

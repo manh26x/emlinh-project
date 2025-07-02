@@ -22,13 +22,23 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-echo -e "${YELLOW}📁 Creating necessary directories...${NC}"
+echo -e "${YELLOW}📁 Creating necessary directories (only if they don't exist)...${NC}"
 
-# Create necessary directories with proper permissions
-mkdir -p "${WORKSPACE_ROOT}/emlinh-remotion/out"
-mkdir -p "${WORKSPACE_ROOT}/emlinh-remotion/public/audios"
-mkdir -p "${WORKSPACE_ROOT}/emlinh_mng/instance"
-mkdir -p "/tmp/emlinh_audio"
+# Create necessary directories with proper permissions - only if paths are safe
+if [ -w "$(dirname "${WORKSPACE_ROOT}")" ] 2>/dev/null; then
+    mkdir -p "${WORKSPACE_ROOT}/emlinh-remotion/out" 2>/dev/null || echo "⚠️ Could not create out directory"
+    mkdir -p "${WORKSPACE_ROOT}/emlinh-remotion/public/audios" 2>/dev/null || echo "⚠️ Could not create audios directory"
+    mkdir -p "${WORKSPACE_ROOT}/emlinh_mng/instance" 2>/dev/null || echo "⚠️ Could not create instance directory"
+else
+    echo "⚠️ Workspace root directory not writable, skipping directory creation"
+fi
+
+# Only create temp directory if /tmp is writable
+if [ -w "/tmp" ] 2>/dev/null; then
+    mkdir -p "/tmp/emlinh_audio" 2>/dev/null || echo "⚠️ Could not create temp audio directory"
+else
+    echo "⚠️ /tmp not writable, skipping temp directory creation"
+fi
 
 # Fix ownership if running as root
 if [ "$(id -u)" = "0" ]; then
@@ -37,14 +47,14 @@ if [ "$(id -u)" = "0" ]; then
     chown -R app:app "/tmp/emlinh_audio" 2>/dev/null || true
 fi
 
-# Set proper permissions
-echo -e "${YELLOW}🔐 Setting proper permissions...${NC}"
-chmod -R 755 "${WORKSPACE_ROOT}/emlinh-remotion/out" 2>/dev/null || true
-chmod -R 755 "${WORKSPACE_ROOT}/emlinh-remotion/public/audios" 2>/dev/null || true
-chmod -R 755 "/tmp/emlinh_audio" 2>/dev/null || true
+# Set proper permissions only for existing directories
+echo -e "${YELLOW}🔐 Setting proper permissions for existing directories...${NC}"
+[ -d "${WORKSPACE_ROOT}/emlinh-remotion/out" ] && chmod -R 755 "${WORKSPACE_ROOT}/emlinh-remotion/out" 2>/dev/null || true
+[ -d "${WORKSPACE_ROOT}/emlinh-remotion/public/audios" ] && chmod -R 755 "${WORKSPACE_ROOT}/emlinh-remotion/public/audios" 2>/dev/null || true
+[ -d "/tmp/emlinh_audio" ] && chmod -R 755 "/tmp/emlinh_audio" 2>/dev/null || true
 
-# Test write permissions
-echo -e "${YELLOW}🔍 Testing write permissions...${NC}"
+# Test write permissions only for existing directories
+echo -e "${YELLOW}🔍 Testing write permissions for existing directories...${NC}"
 test_dirs=(
     "${WORKSPACE_ROOT}/emlinh-remotion/out"
     "${WORKSPACE_ROOT}/emlinh-remotion/public/audios"
@@ -52,11 +62,15 @@ test_dirs=(
 )
 
 for dir in "${test_dirs[@]}"; do
-    if touch "${dir}/.test_write" 2>/dev/null; then
-        rm "${dir}/.test_write" 2>/dev/null || true
-        echo -e "${GREEN}✅ Write test successful for ${dir}${NC}"
+    if [ -d "$dir" ]; then
+        if touch "${dir}/.test_write" 2>/dev/null; then
+            rm "${dir}/.test_write" 2>/dev/null || true
+            echo -e "${GREEN}✅ Write test successful for ${dir}${NC}"
+        else
+            echo -e "${YELLOW}⚠️ Write test failed for ${dir}${NC}"
+        fi
     else
-        echo -e "${YELLOW}⚠️ Write test failed for ${dir}${NC}"
+        echo -e "${YELLOW}ℹ️ Directory ${dir} does not exist, skipping write test${NC}"
     fi
 done
 
