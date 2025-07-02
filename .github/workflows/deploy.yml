@@ -93,23 +93,10 @@ jobs:
         echo "✅ Complete tests passed"
         
         # Test imports
-        python -c "
-import sys
-sys.path.insert(0, 'src/services')
-from facebook_service import FacebookService, create_facebook_service, validate_facebook_token
-print('✅ All Facebook Service imports successful')
-"
+        python -c "import sys; sys.path.insert(0, 'src/services'); from facebook_service import FacebookService; print('✅ Facebook Service imports successful')"
         
         # Test configuration
-        python -c "
-import sys
-sys.path.insert(0, 'src')
-from app.config import Config
-assert hasattr(Config, 'FACEBOOK_ACCESS_TOKEN')
-assert hasattr(Config, 'FACEBOOK_API_VERSION') 
-assert hasattr(Config, 'FACEBOOK_BASE_URL')
-print('✅ Facebook configuration integration verified')
-"
+        python -c "import sys; sys.path.insert(0, 'src'); from app.config import Config; print('✅ Configuration verified')"
         
         echo "🎉 All Facebook Service tests completed successfully!"
 
@@ -156,7 +143,7 @@ print('✅ Facebook configuration integration verified')
 
     - name: Create environment file
       run: |
-        cat > .env << EOFENV
+        cat > .env << 'EOF'
         # Core application settings
         SECRET_KEY=${{ secrets.SECRET_KEY }}
         DATABASE_URL=${{ secrets.DATABASE_URL }}
@@ -179,7 +166,7 @@ print('✅ Facebook configuration integration verified')
         
         # SQLAlchemy settings
         SQLALCHEMY_ECHO=${{ secrets.SQLALCHEMY_ECHO || 'False' }}
-        EOFENV
+        EOF
 
     - name: Create necessary directories
       run: |

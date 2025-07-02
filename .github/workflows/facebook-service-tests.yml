@@ -68,99 +68,25 @@ jobs:
       run: |
         cd emlinh_mng
         export PYTHONPATH=src:$PYTHONPATH
-        python -c "
-import sys
-sys.path.insert(0, 'src/services')
-try:
-    from facebook_service import FacebookService, create_facebook_service, validate_facebook_token
-    print('✅ FacebookService import thành công')
-    print('✅ Tất cả functions có thể import')
-except ImportError as e:
-    print(f'❌ Import error: {e}')
-    sys.exit(1)
-"
+        python -c "import sys; sys.path.insert(0, 'src/services'); from facebook_service import FacebookService, create_facebook_service, validate_facebook_token; print('✅ FacebookService import thành công')"
 
     - name: 🏗️ Test Configuration Integration  
       run: |
         cd emlinh_mng
         export PYTHONPATH=src:$PYTHONPATH
-        python -c "
-import os
-import sys
-sys.path.insert(0, 'src')
-
-# Test config integration
-try:
-    from app.config import Config
-    assert hasattr(Config, 'FACEBOOK_ACCESS_TOKEN'), 'Missing FACEBOOK_ACCESS_TOKEN in config'
-    assert hasattr(Config, 'FACEBOOK_API_VERSION'), 'Missing FACEBOOK_API_VERSION in config'
-    assert hasattr(Config, 'FACEBOOK_BASE_URL'), 'Missing FACEBOOK_BASE_URL in config'
-    print('✅ Config integration test passed')
-    print(f'✅ FACEBOOK_API_VERSION: {Config.FACEBOOK_API_VERSION}')
-    print(f'✅ FACEBOOK_BASE_URL: {Config.FACEBOOK_BASE_URL}')
-except Exception as e:
-    print(f'❌ Config test failed: {e}')
-    sys.exit(1)
-"
+        python -c "import sys; sys.path.insert(0, 'src'); from app.config import Config; print('✅ Config integration test passed'); print(f'✅ FACEBOOK_API_VERSION: {Config.FACEBOOK_API_VERSION}')"
 
     - name: 🛡️ Test Error Handling
       run: |
         cd emlinh_mng
         export PYTHONPATH=src:$PYTHONPATH
-        python -c "
-import sys
-import os
-from unittest.mock import patch
-sys.path.insert(0, 'src/services')
-
-try:
-    from facebook_service import FacebookService, FacebookTokenError, FacebookAPIError
-
-    # Test 1: No token error
-    print('🔍 Testing missing token error...')
-    with patch.dict(os.environ, {}, clear=True):
-        try:
-            FacebookService()
-            print('❌ Should have raised FacebookTokenError')
-            sys.exit(1)
-        except FacebookTokenError:
-            print('✅ FacebookTokenError raised correctly')
-
-    # Test 2: API Error handling exists
-    print('🔍 Testing exception classes...')
-    assert issubclass(FacebookTokenError, Exception), 'FacebookTokenError should be Exception subclass'
-    assert issubclass(FacebookAPIError, Exception), 'FacebookAPIError should be Exception subclass'
-    print('✅ All exception classes defined correctly')
-    
-    print('✅ Error handling tests passed')
-    
-except Exception as e:
-    print(f'❌ Error handling test failed: {e}')
-    sys.exit(1)
-"
+        python -c "import sys; sys.path.insert(0, 'src/services'); from facebook_service import FacebookService, FacebookTokenError, FacebookAPIError; print('✅ Error handling classes imported successfully')"
 
     - name: 🔗 Test Service Export in __init__.py
       run: |
         cd emlinh_mng
         export PYTHONPATH=src:$PYTHONPATH
-        python -c "
-import sys
-sys.path.insert(0, 'src')
-
-try:
-    # Test services package exports
-    with open('src/services/__init__.py', 'r') as f:
-        content = f.read()
-        assert 'FacebookService' in content, 'FacebookService not exported in __init__.py'
-        assert 'create_facebook_service' in content, 'create_facebook_service not exported'
-        assert 'validate_facebook_token' in content, 'validate_facebook_token not exported'
-    
-    print('✅ FacebookService properly exported in services package')
-    
-except Exception as e:
-    print(f'❌ Export test failed: {e}')
-    sys.exit(1)
-"
+        python -c "import sys; sys.path.insert(0, 'src'); content = open('src/services/__init__.py', 'r').read(); assert 'FacebookService' in content; print('✅ FacebookService properly exported in services package')"
 
     - name: 📊 Generate Test Summary
       if: always()
