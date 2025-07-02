@@ -49,8 +49,21 @@ dev: ## Chạy ở development mode
 clean: ## Dọn dẹp containers và images
 	@echo "$(YELLOW)🧹 Cleaning up...$(NC)"
 	docker compose down --remove-orphans --volumes
+	@make fix-permissions
 	docker system prune -af --volumes
 	@echo "$(GREEN)✅ Cleanup completed!$(NC)"
+
+fix-permissions: ## Fix permissions cho mounted directories
+	@echo "$(YELLOW)🔧 Fixing permissions...$(NC)"
+	@chmod +x scripts/fix-permissions.sh 2>/dev/null || true
+	@./scripts/fix-permissions.sh
+
+clean-volumes: ## Dọn dẹp toàn bộ Docker volumes
+	@echo "$(YELLOW)🗑️ Cleaning up all volumes...$(NC)"
+	docker compose down --remove-orphans --volumes
+	docker volume rm emlinh_projects_app_data emlinh_projects_audio_data emlinh_projects_model_data || true
+	@make fix-permissions
+	@echo "$(GREEN)✅ Volumes cleanup completed!$(NC)"
 
 status: ## Kiểm tra trạng thái services
 	@echo "$(GREEN)📊 Service Status:$(NC)"

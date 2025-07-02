@@ -135,6 +135,16 @@ jobs:
       run: |
         docker compose down --remove-orphans || true
 
+    - name: Fix permissions before cleanup
+      run: |
+        # Sử dụng script fix-permissions helper
+        chmod +x scripts/fix-permissions.sh 2>/dev/null || true
+        ./scripts/fix-permissions.sh || {
+          echo "⚠️ Fallback to manual permission fix..."
+          sudo chown -R $USER:$USER public/ emlinh_mng/instance/ || true
+          sudo chmod -R 755 public/ emlinh_mng/instance/ || true
+        }
+
     - name: Remove old images
       run: |
         docker system prune -af --volumes || true
@@ -158,6 +168,17 @@ jobs:
       run: |
         docker image prune -af
         docker volume prune -f
+
+    - name: Final cleanup and permission fix
+      run: |
+        # Đảm bảo các thư mục có permissions đúng cho lần chạy tiếp theo
+        chmod +x scripts/fix-permissions.sh 2>/dev/null || true
+        ./scripts/fix-permissions.sh || {
+          echo "⚠️ Fallback to manual permission fix..."
+          sudo chown -R $USER:$USER public/ emlinh_mng/instance/ || true
+          sudo chmod -R 755 public/ emlinh_mng/instance/ || true
+        }
+      if: always()
 
   notification:
     runs-on: self-hosted

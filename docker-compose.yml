@@ -29,8 +29,8 @@ services:
       - "3000:3000"  # Remotion studio
     volumes:
       - app_data:/app/data
-      - ./public/audios:/app/public/audios
-      - ./public/models:/app/public/models
+      - audio_data:/app/public/audios
+      - model_data:/app/public/models
     networks:
       - emlinh_network
     restart: unless-stopped
@@ -58,6 +58,8 @@ services:
 
 volumes:
   app_data:
+  audio_data:
+  model_data:
 
 networks:
   emlinh_network:
