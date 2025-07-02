@@ -85,6 +85,10 @@ WORKDIR /app
 COPY emlinh_mng/ ./emlinh_mng/
 COPY emlinh-remotion/ ./emlinh-remotion/
 
+# Copy and setup permission fix script (before switching to non-root user)
+COPY scripts/docker-fix-permissions.sh /app/fix-permissions.sh
+RUN chmod +x /app/fix-permissions.sh
+
 # Set permissions
 RUN chown -R app:app /app
 
@@ -97,10 +101,6 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 
 # Expose ports
 EXPOSE 5000 3000
-
-# Copy and setup permission fix script
-COPY scripts/docker-fix-permissions.sh /app/fix-permissions.sh
-RUN chmod +x /app/fix-permissions.sh
 
 # Create startup script để chạy cả hai services
 RUN cat > /app/start.sh <<EOF && \
