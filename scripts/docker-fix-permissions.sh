@@ -5,9 +5,16 @@
 
 set -e
 
+# Check if we're actually running in a Docker container
+if [ ! -f /.dockerenv ]; then
+    echo "❌ This script is designed to run inside Docker containers only!"
+    echo "ℹ️ Use scripts/fix-permissions.sh for host environment instead."
+    exit 1
+fi
+
 echo "🔧 Fixing permissions for emlinh project in Docker container..."
 
-# Set workspace root
+# Set workspace root for Docker container
 WORKSPACE_ROOT=${WORKSPACE_ROOT:-/app}
 
 # Colors for output

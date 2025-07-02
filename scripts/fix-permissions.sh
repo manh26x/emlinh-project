@@ -150,29 +150,33 @@ else
     echo -e "${GREEN}🎯 Workspace cleanup completed successfully!${NC}"
 fi
 
-# Fix permissions for emlinh project
-echo "Fixing permissions for emlinh project..."
+# Only run Docker-specific permission fixes if we're in a Docker container
+if [ -f /.dockerenv ] && [ "$CLEANUP_WORKSPACE" != true ]; then
+    echo "🐳 Detected Docker environment, applying container-specific permission fixes..."
+    
+    # Set workspace root for Docker container
+    WORKSPACE_ROOT=${WORKSPACE_ROOT:-/app}
+    
+    # Create necessary directories with proper permissions
+    echo "📁 Creating necessary directories..."
+    mkdir -p "${WORKSPACE_ROOT}/emlinh-remotion/out" 2>/dev/null || true
+    mkdir -p "${WORKSPACE_ROOT}/emlinh-remotion/public/audios" 2>/dev/null || true
+    mkdir -p "${WORKSPACE_ROOT}/emlinh_mng/instance" 2>/dev/null || true
+    mkdir -p "/tmp/emlinh_audio" 2>/dev/null || true
 
-# Set workspace root
-WORKSPACE_ROOT=${WORKSPACE_ROOT:-/app}
+    # Fix ownership if running as root in container
+    if [ "$(id -u)" = "0" ]; then
+        echo "🔧 Running as root in container, fixing ownership..."
+        chown -R app:app "${WORKSPACE_ROOT}" 2>/dev/null || true
+        chown -R app:app "/tmp/emlinh_audio" 2>/dev/null || true
+    fi
 
-# Create necessary directories with proper permissions
-echo "Creating directories..."
-mkdir -p "${WORKSPACE_ROOT}/emlinh-remotion/out"
-mkdir -p "${WORKSPACE_ROOT}/emlinh-remotion/public/audios"
-mkdir -p "${WORKSPACE_ROOT}/emlinh_mng/instance"
-mkdir -p "/tmp/emlinh_audio"
+    # Set proper permissions in container
+    chmod -R 755 "${WORKSPACE_ROOT}/emlinh-remotion/out" 2>/dev/null || true
+    chmod -R 755 "${WORKSPACE_ROOT}/emlinh-remotion/public/audios" 2>/dev/null || true
+    chmod -R 755 "/tmp/emlinh_audio" 2>/dev/null || true
 
-# Fix ownership if running as root
-if [ "$(id -u)" = "0" ]; then
-    echo "Running as root, fixing ownership..."
-    chown -R app:app "${WORKSPACE_ROOT}" 2>/dev/null || true
-    chown -R app:app "/tmp/emlinh_audio" 2>/dev/null || true
-fi
-
-# Set proper permissions
-chmod -R 755 "${WORKSPACE_ROOT}/emlinh-remotion/out" 2>/dev/null || true
-chmod -R 755 "${WORKSPACE_ROOT}/emlinh-remotion/public/audios" 2>/dev/null || true
-chmod -R 755 "/tmp/emlinh_audio" 2>/dev/null || true
-
-echo "Permissions fixed successfully!" 
+    echo "✅ Docker container permissions fixed successfully!"
+else
+    echo "ℹ️ Skipping Docker-specific permission fixes (not in container or in workspace cleanup mode)"
+fi 
