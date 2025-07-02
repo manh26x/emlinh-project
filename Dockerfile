@@ -98,23 +98,47 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 # Expose ports
 EXPOSE 5000 3000
 
+# Copy and setup permission fix script
+COPY scripts/docker-fix-permissions.sh /app/fix-permissions.sh
+RUN chmod +x /app/fix-permissions.sh
+
 # Create startup script để chạy cả hai services
 RUN cat > /app/start.sh <<EOF && \
     chmod +x /app/start.sh
 #!/bin/bash
 set -e
 
+echo "Starting emlinh application..."
+
+# Fix permissions first
+/app/fix-permissions.sh
+
+# Create required directories
+mkdir -p /app/emlinh-remotion/out
+mkdir -p /app/emlinh-remotion/public/audios
+mkdir -p /tmp/emlinh_audio
+
 # Start emlinh-remotion in background
-cd /app/emlinh-remotion && npm start &
+echo "Starting Remotion studio..."
+cd /app/emlinh-remotion && npm start > /tmp/remotion.log 2>&1 &
+REMOTION_PID=\$!
+
+# Give remotion a moment to start
+sleep 5
 
 # Start emlinh_mng
-cd /app/emlinh_mng && python3 -m src.app.run
+echo "Starting Flask application..."
+cd /app/emlinh_mng && python3 -m src.app.run &
+FLASK_PID=\$!
 
-# Wait for any process to exit
-wait -n
+# Monitor both processes
+while kill -0 \$REMOTION_PID 2>/dev/null && kill -0 \$FLASK_PID 2>/dev/null; do
+    sleep 10
+done
 
-# Exit with status of process that exited first
-exit \$?
+echo "One of the processes died, shutting down..."
+kill \$REMOTION_PID \$FLASK_PID 2>/dev/null || true
+wait
 EOF
 
 CMD ["/app/start.sh"]

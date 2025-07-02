@@ -148,4 +148,31 @@ if [ "$CLEANUP_WORKSPACE" != true ]; then
     echo -e "${GREEN}🎯 Permission fix completed successfully!${NC}"
 else
     echo -e "${GREEN}🎯 Workspace cleanup completed successfully!${NC}"
-fi 
+fi
+
+# Fix permissions for emlinh project
+echo "Fixing permissions for emlinh project..."
+
+# Set workspace root
+WORKSPACE_ROOT=${WORKSPACE_ROOT:-/app}
+
+# Create necessary directories with proper permissions
+echo "Creating directories..."
+mkdir -p "${WORKSPACE_ROOT}/emlinh-remotion/out"
+mkdir -p "${WORKSPACE_ROOT}/emlinh-remotion/public/audios"
+mkdir -p "${WORKSPACE_ROOT}/emlinh_mng/instance"
+mkdir -p "/tmp/emlinh_audio"
+
+# Fix ownership if running as root
+if [ "$(id -u)" = "0" ]; then
+    echo "Running as root, fixing ownership..."
+    chown -R app:app "${WORKSPACE_ROOT}" 2>/dev/null || true
+    chown -R app:app "/tmp/emlinh_audio" 2>/dev/null || true
+fi
+
+# Set proper permissions
+chmod -R 755 "${WORKSPACE_ROOT}/emlinh-remotion/out" 2>/dev/null || true
+chmod -R 755 "${WORKSPACE_ROOT}/emlinh-remotion/public/audios" 2>/dev/null || true
+chmod -R 755 "/tmp/emlinh_audio" 2>/dev/null || true
+
+echo "Permissions fixed successfully!" 

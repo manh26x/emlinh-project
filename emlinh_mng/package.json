@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "description": "Frontend unit tests for Emlinh AI Assistant",
   "scripts": {
+    "start": "python3 -m src.app.run",
+    "dev": "python3 -m src.app.run",
     "test": "node tests/frontend/runners/clean-test-runner.js",
     "test:improved": "node tests/frontend/runners/improved-test-runner.js",
     "test:browser": "node tests/frontend/runners/browser-test-runner.js",

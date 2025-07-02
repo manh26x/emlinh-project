@@ -15,8 +15,15 @@ class TTSService:
         self.remotion_path = Config.REMOTION_PATH
         self.audio_dir = Config.AUDIO_OUTPUT_DIR
         
-        # Đảm bảo thư mục audio tồn tại
-        os.makedirs(self.audio_dir, exist_ok=True)
+        # Đảm bảo thư mục audio tồn tại với error handling
+        try:
+            # Sử dụng method từ Config để tạo directories
+            Config.ensure_directories()
+        except Exception as e:
+            print(f"Warning: Could not create audio directory {self.audio_dir}: {e}")
+            # Fallback to /tmp if main path fails
+            self.audio_dir = '/tmp/emlinh_audio'
+            os.makedirs(self.audio_dir, exist_ok=True)
         
         # OpenAI client
         self.client = openai.OpenAI()

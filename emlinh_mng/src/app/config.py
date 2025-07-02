@@ -19,10 +19,45 @@ class Config:
     SQLALCHEMY_ECHO = os.environ.get('SQLALCHEMY_ECHO', 'False').lower() == 'true'
     
     # Workspace and Path Configuration
-    WORKSPACE_ROOT = os.environ.get('WORKSPACE_ROOT') or '/home/mike/Documents/Code/emlinh_projects'
+    # Sử dụng /app làm default trong container, fallback về thư mục hiện tại nếu không có quyền
+    WORKSPACE_ROOT = os.environ.get('WORKSPACE_ROOT')
+    if not WORKSPACE_ROOT:
+        # Thử các path có thể
+        possible_paths = ['/app', '/home/mike/Documents/Code/emlinh_projects', os.getcwd()]
+        for path in possible_paths:
+            try:
+                # Kiểm tra xem có thể tạo thư mục test không
+                test_dir = os.path.join(path, 'test_write_permission')
+                os.makedirs(test_dir, exist_ok=True)
+                os.rmdir(test_dir)
+                WORKSPACE_ROOT = path
+                break
+            except (OSError, PermissionError):
+                continue
+        
+        # Nếu không tìm được path nào có thể write, sử dụng /tmp
+        if not WORKSPACE_ROOT:
+            WORKSPACE_ROOT = '/tmp/emlinh_workspace'
+            os.makedirs(WORKSPACE_ROOT, exist_ok=True)
+    
     REMOTION_PATH = os.path.join(WORKSPACE_ROOT, 'emlinh-remotion')
     REMOTION_OUTPUT_DIR = os.path.join(WORKSPACE_ROOT, 'emlinh-remotion', 'out')
     AUDIO_OUTPUT_DIR = os.path.join(WORKSPACE_ROOT, 'emlinh-remotion', 'public', 'audios')
+    
+    # Đảm bảo các thư mục cần thiết tồn tại
+    @classmethod
+    def ensure_directories(cls):
+        """Tạo các thư mục cần thiết nếu chưa tồn tại"""
+        directories = [
+            cls.REMOTION_OUTPUT_DIR,
+            cls.AUDIO_OUTPUT_DIR
+        ]
+        
+        for directory in directories:
+            try:
+                os.makedirs(directory, exist_ok=True)
+            except (OSError, PermissionError) as e:
+                print(f"Warning: Cannot create directory {directory}: {e}")
     
     # Ollama Embedding Configuration
     OLLAMA_BASE_URL = os.environ.get('OLLAMA_BASE_URL') or 'http://192.168.1.10:11434'
@@ -32,7 +67,8 @@ class Config:
     @staticmethod
     def init_app(app):
         """Initialize application with this configuration"""
-        pass
+        # Tạo các thư mục cần thiết khi khởi tạo app
+        Config.ensure_directories()
 
 class DevelopmentConfig(Config):
     """Development configuration"""

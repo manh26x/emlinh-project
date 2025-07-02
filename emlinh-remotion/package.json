@@ -29,6 +29,7 @@
     "typescript": "5.8.2"
   },
   "scripts": {
+    "start": "REMOTION_CONCURRENCY=1 remotion studio",
     "dev": "REMOTION_CONCURRENCY=1 remotion studio",
     "build": "remotion bundle",
     "upgrade": "remotion upgrade",
