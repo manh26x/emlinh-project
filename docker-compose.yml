@@ -6,11 +6,24 @@ services:
       dockerfile: Dockerfile
       target: production
     environment:
+      # Core application settings
       - FLASK_ENV=production
       - DATABASE_URL=${DATABASE_URL}
       - SECRET_KEY=${SECRET_KEY:-your-secret-key-here}
-      - OLLAMA_BASE_URL=http://192.168.1.10:11434
+      
+      # Workspace configuration
+      - WORKSPACE_ROOT=${WORKSPACE_ROOT:-/app}
+      
+      # AI/ML services
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://192.168.1.10:11434}
+      - OLLAMA_EMBED_MODEL=${OLLAMA_EMBED_MODEL:-nomic-embed-text}
+      - EMBEDDING_DIMENSION=${EMBEDDING_DIMENSION:-768}
+      
+      # OpenAI API
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      
+      # SQLAlchemy settings
+      - SQLALCHEMY_ECHO=${SQLALCHEMY_ECHO:-False}
     ports:
       - "5000:5000"  # Flask app
       - "3000:3000"  # Remotion studio

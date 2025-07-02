@@ -6,14 +6,14 @@ from datetime import datetime
 from typing import Dict, Any, Optional
 import openai
 from pathlib import Path
+from ..app.config import Config
 
 
 class TTSService:
     def __init__(self):
-        # Đường dẫn đến dự án và thư mục audio
-        workspace_root = '/home/mike/Documents/Code/emlinh_projects'
-        self.remotion_path = os.path.join(workspace_root, 'emlinh-remotion')
-        self.audio_dir = os.path.join(self.remotion_path, 'public', 'audios')
+        # Sử dụng config để lấy đường dẫn
+        self.remotion_path = Config.REMOTION_PATH
+        self.audio_dir = Config.AUDIO_OUTPUT_DIR
         
         # Đảm bảo thư mục audio tồn tại
         os.makedirs(self.audio_dir, exist_ok=True)

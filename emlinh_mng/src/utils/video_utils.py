@@ -7,6 +7,7 @@ import time
 import subprocess
 import json
 from typing import Dict, Any, Optional
+from ..app.config import Config
 
 
 class VideoUtils:
@@ -39,12 +40,12 @@ class VideoUtils:
             safe_topic = topic.replace(" ", "_").replace("/", "_")[:20]
             output_filename = f"video_{timestamp}_{safe_topic}.mp4"
             
-            # Đường dẫn output directory
-            output_dir = "/home/mike/Documents/Code/emlinh_projects"
+            # Sử dụng config để lấy đường dẫn
+            output_dir = Config.WORKSPACE_ROOT
             output_path = os.path.join(output_dir, output_filename)
             
             # Đường dẫn Remotion project
-            remotion_path = "/home/mike/Documents/Code/emlinh_projects/emlinh-remotion"
+            remotion_path = Config.REMOTION_PATH
             
             # Tạo directory nếu chưa tồn tại
             os.makedirs(output_dir, exist_ok=True)

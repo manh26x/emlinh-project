@@ -5,14 +5,14 @@ import threading
 import time
 from datetime import datetime
 from typing import Dict, Any, Optional, List
+from ..app.config import Config
 
 
 class VideoService:
     def __init__(self):
-        # Đường dẫn tới dự án Remotion (từ workspace root)
-        workspace_root = '/home/mike/Documents/Code/emlinh_projects'
-        self.remotion_path = os.path.join(workspace_root, 'emlinh-remotion')
-        self.output_dir = workspace_root
+        # Sử dụng config để lấy đường dẫn
+        self.remotion_path = Config.REMOTION_PATH
+        self.output_dir = Config.WORKSPACE_ROOT
         
         # Lưu trữ trạng thái render jobs
         self.render_jobs = {}

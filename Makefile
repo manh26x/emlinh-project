@@ -42,6 +42,7 @@ deploy: ## Deploy application với Docker Compose
 
 dev: ## Chạy ở development mode
 	@echo "$(GREEN)🔧 Starting development environment...$(NC)"
+	@make setup-env
 	docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
 	@make logs
 
@@ -105,6 +106,34 @@ install-deps: ## Cài đặt dependencies local cho development
 	cd emlinh_mng && pip install -r requirements.txt
 	cd emlinh-remotion && npm install
 	@echo "$(GREEN)✅ Dependencies installed!$(NC)"
+
+setup-env: ## Tạo file .env từ template
+	@echo "$(GREEN)⚙️ Setting up environment...$(NC)"
+	@if [ ! -f ".env" ]; then \
+		echo "Creating .env file..."; \
+		echo "# Core application settings" > .env; \
+		echo "SECRET_KEY=dev-secret-key-change-in-production" >> .env; \
+		echo "DATABASE_URL=sqlite:///app.db" >> .env; \
+		echo "FLASK_ENV=development" >> .env; \
+		echo "" >> .env; \
+		echo "# Workspace configuration" >> .env; \
+		echo "WORKSPACE_ROOT=$$(pwd)" >> .env; \
+		echo "" >> .env; \
+		echo "# AI/ML services" >> .env; \
+		echo "OLLAMA_BASE_URL=http://192.168.1.10:11434" >> .env; \
+		echo "OLLAMA_EMBED_MODEL=nomic-embed-text" >> .env; \
+		echo "EMBEDDING_DIMENSION=768" >> .env; \
+		echo "" >> .env; \
+		echo "# OpenAI API" >> .env; \
+		echo "OPENAI_API_KEY=your-openai-api-key-here" >> .env; \
+		echo "" >> .env; \
+		echo "# SQLAlchemy settings" >> .env; \
+		echo "SQLALCHEMY_ECHO=True" >> .env; \
+		cp .env emlinh_mng/.env; \
+		echo "$(GREEN)✅ .env files created! Please update OPENAI_API_KEY and other settings$(NC)"; \
+	else \
+		echo "$(YELLOW)⚠️ .env file already exists$(NC)"; \
+	fi
 
 lint: ## Chạy linting cho cả Python và Node.js
 	@echo "$(GREEN)🔍 Running linters...$(NC)"

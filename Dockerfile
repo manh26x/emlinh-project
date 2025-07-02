@@ -64,6 +64,7 @@ ENV PYTHONPATH=/app/emlinh_mng
 ENV FLASK_APP=src.app.run:app
 ENV FLASK_ENV=production
 ENV PYTHONUNBUFFERED=1
+ENV WORKSPACE_ROOT=/app
 
 # Create app user
 RUN useradd --create-home --shell /bin/bash app

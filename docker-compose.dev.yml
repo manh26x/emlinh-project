@@ -4,11 +4,26 @@ services:
     build:
       target: production  # Vẫn dùng production target nhưng với dev settings
     environment:
+      # Core application settings (development)
       - FLASK_ENV=development
       - DEBUG=true
-      - SQLALCHEMY_ECHO=true
-      - DATABASE_URL=postgresql://dev_user:dev_password@192.168.1.10:5432/emlinh_dev_db
-      - OLLAMA_BASE_URL=http://192.168.1.10:11434
+      - DATABASE_URL=${DATABASE_URL:-postgresql://dev_user:dev_password@192.168.1.10:5432/emlinh_dev_db}
+      - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production}
+      
+      # Workspace configuration
+      - WORKSPACE_ROOT=${WORKSPACE_ROOT:-/app}
+      
+      # AI/ML services
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://192.168.1.10:11434}
+      - OLLAMA_EMBED_MODEL=${OLLAMA_EMBED_MODEL:-nomic-embed-text}
+      - EMBEDDING_DIMENSION=${EMBEDDING_DIMENSION:-768}
+      
+      # OpenAI API  
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      
+      # SQLAlchemy settings (development)
+      - SQLALCHEMY_ECHO=${SQLALCHEMY_ECHO:-true}
+
     volumes:
       # Mount source code để hot reload
       - ./emlinh_mng:/app/emlinh_mng

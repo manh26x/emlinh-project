@@ -1,4 +1,4 @@
-// File: /home/mike/Documents/Code/emlinh_projects/emlinh-remotion/src/Avatar.d.ts
+// File: emlinh-remotion/src/Avatar.d.ts
 import React from 'react';
 import { GroupProps } from '@react-three/fiber'; // Props chuẩn cho group trong R3F
 import * as THREE from 'three'; // Import THREE để sử dụng cho kiểu ref

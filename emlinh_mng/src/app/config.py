@@ -18,6 +18,12 @@ class Config:
     # Additional Flask-SQLAlchemy settings
     SQLALCHEMY_ECHO = os.environ.get('SQLALCHEMY_ECHO', 'False').lower() == 'true'
     
+    # Workspace and Path Configuration
+    WORKSPACE_ROOT = os.environ.get('WORKSPACE_ROOT') or '/home/mike/Documents/Code/emlinh_projects'
+    REMOTION_PATH = os.path.join(WORKSPACE_ROOT, 'emlinh-remotion')
+    REMOTION_OUTPUT_DIR = os.path.join(WORKSPACE_ROOT, 'emlinh-remotion', 'out')
+    AUDIO_OUTPUT_DIR = os.path.join(WORKSPACE_ROOT, 'emlinh-remotion', 'public', 'audios')
+    
     # Ollama Embedding Configuration
     OLLAMA_BASE_URL = os.environ.get('OLLAMA_BASE_URL') or 'http://192.168.1.10:11434'
     OLLAMA_EMBED_MODEL = os.environ.get('OLLAMA_EMBED_MODEL') or 'nomic-embed-text'

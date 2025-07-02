@@ -72,16 +72,64 @@ jobs:
     - name: Create environment file
       run: |
         cat > .env << EOFENV
+        # Core application settings
         SECRET_KEY=${{ secrets.SECRET_KEY }}
         DATABASE_URL=${{ secrets.DATABASE_URL }}
-        OLLAMA_BASE_URL=${{ secrets.OLLAMA_BASE_URL }}
-        OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
         FLASK_ENV=production
+        
+        # Workspace configuration
+        WORKSPACE_ROOT=${{ github.workspace }}
+        
+        # AI/ML services
+        OLLAMA_BASE_URL=${{ secrets.OLLAMA_BASE_URL }}
+        OLLAMA_EMBED_MODEL=${{ secrets.OLLAMA_EMBED_MODEL || 'nomic-embed-text' }}
+        EMBEDDING_DIMENSION=${{ secrets.EMBEDDING_DIMENSION || '768' }}
+        
+        # OpenAI API
+        OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+        
+        # SQLAlchemy settings
+        SQLALCHEMY_ECHO=${{ secrets.SQLALCHEMY_ECHO || 'False' }}
         EOFENV
 
     - name: Create necessary directories
       run: |
         mkdir -p public/audios public/models ssl
+        mkdir -p emlinh_mng/instance
+
+    - name: Copy environment file to Flask app directory
+      run: |
+        cp .env emlinh_mng/.env
+
+    - name: Validate environment and workspace setup
+      run: |
+        echo "🔍 Validating environment setup..."
+        echo "WORKSPACE_ROOT: ${{ github.workspace }}"
+        echo "Current directory: $(pwd)"
+        
+        # Validate required directories exist
+        if [ ! -d "emlinh_mng" ]; then
+          echo "❌ emlinh_mng directory not found"
+          exit 1
+        fi
+        
+        if [ ! -d "emlinh-remotion" ]; then
+          echo "❌ emlinh-remotion directory not found"
+          exit 1
+        fi
+        
+        # Check if .env files exist
+        if [ ! -f ".env" ]; then
+          echo "❌ Root .env file not found"
+          exit 1
+        fi
+        
+        if [ ! -f "emlinh_mng/.env" ]; then
+          echo "❌ Flask app .env file not found"
+          exit 1
+        fi
+        
+        echo "✅ Environment validation passed"
 
     - name: Stop existing containers
       run: |

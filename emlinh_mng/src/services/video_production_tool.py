@@ -11,6 +11,7 @@ from .video_service import VideoService
 from .tts_service import TTSService
 from src.app.app import db
 from src.app.models import Video
+from src.app.config import Config
 
 
 class VideoProductionInput(BaseModel):
@@ -63,8 +64,8 @@ class VideoProductionTool(BaseTool):
         # Tạo tên file output ngay từ đầu - sử dụng thư mục output của video service
         timestamp = time.strftime("%Y%m%d_%H%M%S")
         output_name = f"video_{timestamp}_{topic[:20].replace(' ', '_')}.mp4"
-        # Lấy output directory từ video service để đồng bộ
-        video_output_dir = getattr(self.video_service, 'output_dir', '/home/mike/Documents/Code/emlinh_projects/emlinh-remotion/out')
+        # Sử dụng config để lấy output directory
+        video_output_dir = getattr(self.video_service, 'output_dir', Config.WORKSPACE_ROOT)
         output_path = os.path.join(video_output_dir, output_name)
         
         try:

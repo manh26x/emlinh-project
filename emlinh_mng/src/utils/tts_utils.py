@@ -6,6 +6,7 @@ import os
 import time
 import json
 from typing import Dict, Any, Optional
+from ..app.config import Config
 
 
 class TTSUtils:
@@ -94,8 +95,8 @@ class TTSUtils:
             timestamp = time.strftime("%Y%m%d_%H%M%S")
             output_filename = f"audio_{timestamp}_{voice}.wav"
             
-            # Đường dẫn output directory
-            output_dir = "/home/mike/Documents/Code/emlinh_projects/emlinh-remotion/public/audios"
+            # Sử dụng config để lấy đường dẫn
+            output_dir = Config.AUDIO_OUTPUT_DIR
             output_path = os.path.join(output_dir, output_filename)
             
             # Tạo directory nếu chưa tồn tại
