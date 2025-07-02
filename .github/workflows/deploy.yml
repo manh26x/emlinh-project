@@ -17,30 +17,25 @@ jobs:
     if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.merged == true)
     
     steps:
-    - name: Pre-cleanup workspace permissions
+    - name: Force workspace cleanup
       run: |
-        echo "🧹 Pre-cleaning workspace for checkout..."
-        # Sử dụng script nếu có, fallback về manual
-        if [ -f "scripts/fix-permissions.sh" ]; then
-          chmod +x scripts/fix-permissions.sh 2>/dev/null || true
-          ./scripts/fix-permissions.sh --cleanup-workspace || {
-            echo "⚠️ Script failed, using manual cleanup..."
-            sudo chown -R $USER:$USER . || true
-            sudo chmod -R 755 . || true
-            sudo rm -rf public/audios public/models emlinh_mng/instance || true
-          }
-        else
-          echo "⚠️ Script not found, using manual cleanup..."
-          sudo chown -R $USER:$USER . || true
-          sudo chmod -R 755 . || true
-          sudo rm -rf public/audios public/models emlinh_mng/instance || true
-        fi
-        echo "✅ Pre-cleanup completed"
+        echo "🧹 Force cleaning entire workspace before checkout..."
+        
+        # Force fix ownership of entire workspace
+        sudo chown -R $USER:$USER ${{ github.workspace }} || true
+        sudo chmod -R 755 ${{ github.workspace }} || true
+        
+        # Remove all contents to ensure clean state  
+        sudo rm -rf ${{ github.workspace }}/* || true
+        sudo rm -rf ${{ github.workspace }}/.* 2>/dev/null || true
+        
+        echo "✅ Force cleanup completed"
     
     - name: Checkout code
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
+        clean: false
 
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -86,28 +81,24 @@ jobs:
     if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main')
     
     steps:
-    - name: Pre-cleanup workspace permissions
+    - name: Force workspace cleanup
       run: |
-        echo "🧹 Pre-cleaning workspace for deployment checkout..."
-        # Sử dụng script nếu có, fallback về manual
-        if [ -f "scripts/fix-permissions.sh" ]; then
-          chmod +x scripts/fix-permissions.sh 2>/dev/null || true
-          ./scripts/fix-permissions.sh --cleanup-workspace || {
-            echo "⚠️ Script failed, using manual cleanup..."
-            sudo chown -R $USER:$USER . || true
-            sudo chmod -R 755 . || true
-            sudo rm -rf public/audios public/models emlinh_mng/instance || true
-          }
-        else
-          echo "⚠️ Script not found, using manual cleanup..."
-          sudo chown -R $USER:$USER . || true
-          sudo chmod -R 755 . || true
-          sudo rm -rf public/audios public/models emlinh_mng/instance || true
-        fi
-        echo "✅ Pre-cleanup completed"
+        echo "🧹 Force cleaning entire workspace before deployment checkout..."
+        
+        # Force fix ownership of entire workspace
+        sudo chown -R $USER:$USER ${{ github.workspace }} || true
+        sudo chmod -R 755 ${{ github.workspace }} || true
+        
+        # Remove all contents to ensure clean state  
+        sudo rm -rf ${{ github.workspace }}/* || true
+        sudo rm -rf ${{ github.workspace }}/.* 2>/dev/null || true
+        
+        echo "✅ Force cleanup completed"
     
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        clean: false
 
     - name: Create environment file
       run: |
