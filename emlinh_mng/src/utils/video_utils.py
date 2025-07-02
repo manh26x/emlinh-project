@@ -47,8 +47,15 @@ class VideoUtils:
             # Đường dẫn Remotion project
             remotion_path = Config.REMOTION_PATH
             
-            # Tạo directory nếu chưa tồn tại
-            os.makedirs(output_dir, exist_ok=True)
+            # Tạo directory nếu chưa tồn tại và có quyền
+            try:
+                parent_dir = os.path.dirname(output_dir)
+                if os.path.exists(parent_dir) and os.access(parent_dir, os.W_OK):
+                    os.makedirs(output_dir, exist_ok=True)
+                else:
+                    print(f"Warning: Cannot create output directory {output_dir} - no write permission")
+            except (OSError, PermissionError) as e:
+                print(f"Warning: Cannot create output directory {output_dir}: {e}")
             
             print(f"🎬 Rendering video với Remotion: {output_filename}")
             print(f"   - Audio: {audio_file}")

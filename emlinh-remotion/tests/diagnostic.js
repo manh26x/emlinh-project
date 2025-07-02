@@ -67,9 +67,14 @@ const startTime = Date.now();
 let result = { success: false };
 
 try {
-  // Create output dir if needed
+  // Create output dir if needed and possible
   if (!fs.existsSync('out')) {
-    fs.mkdirSync('out');
+    try {
+      fs.mkdirSync('out', { recursive: true });
+    } catch (error) {
+      console.log(`⚠️ Warning: Cannot create 'out' directory: ${error.message}`);
+      // Continue without creating directory
+    }
   }
   
   // Remove existing file

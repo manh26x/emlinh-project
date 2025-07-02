@@ -99,8 +99,15 @@ class TTSUtils:
             output_dir = Config.AUDIO_OUTPUT_DIR
             output_path = os.path.join(output_dir, output_filename)
             
-            # Tạo directory nếu chưa tồn tại
-            os.makedirs(output_dir, exist_ok=True)
+            # Tạo directory nếu chưa tồn tại và có quyền
+            try:
+                parent_dir = os.path.dirname(output_dir)
+                if os.path.exists(parent_dir) and os.access(parent_dir, os.W_OK):
+                    os.makedirs(output_dir, exist_ok=True)
+                else:
+                    print(f"Warning: Cannot create output directory {output_dir} - no write permission")
+            except (OSError, PermissionError) as e:
+                print(f"Warning: Cannot create output directory {output_dir}: {e}")
             
             print(f"🎤 Creating dummy audio (fallback): {output_filename}")
             

@@ -23,7 +23,14 @@ class TTSService:
             print(f"Warning: Could not create audio directory {self.audio_dir}: {e}")
             # Fallback to /tmp if main path fails
             self.audio_dir = '/tmp/emlinh_audio'
-            os.makedirs(self.audio_dir, exist_ok=True)
+            # Chỉ tạo thư mục temp nếu có quyền
+            try:
+                if os.access('/tmp', os.W_OK):
+                    os.makedirs(self.audio_dir, exist_ok=True)
+                else:
+                    print(f"Warning: No write permission to /tmp, audio directory not created")
+            except (OSError, PermissionError) as e:
+                print(f"Warning: Could not create temp audio directory: {e}")
         
         # OpenAI client
         self.client = openai.OpenAI()
