@@ -58,6 +58,11 @@ fix-permissions: ## Fix permissions cho mounted directories
 	@chmod +x scripts/fix-permissions.sh 2>/dev/null || true
 	@./scripts/fix-permissions.sh
 
+cleanup-workspace: ## Cleanup toàn bộ workspace cho CI/CD
+	@echo "$(YELLOW)🧹 Cleaning up workspace...$(NC)"
+	@chmod +x scripts/fix-permissions.sh 2>/dev/null || true
+	@./scripts/fix-permissions.sh --cleanup-workspace
+
 clean-volumes: ## Dọn dẹp toàn bộ Docker volumes
 	@echo "$(YELLOW)🗑️ Cleaning up all volumes...$(NC)"
 	docker compose down --remove-orphans --volumes

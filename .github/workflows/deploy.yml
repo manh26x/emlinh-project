@@ -17,6 +17,26 @@ jobs:
     if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.merged == true)
     
     steps:
+    - name: Pre-cleanup workspace permissions
+      run: |
+        echo "🧹 Pre-cleaning workspace for checkout..."
+        # Sử dụng script nếu có, fallback về manual
+        if [ -f "scripts/fix-permissions.sh" ]; then
+          chmod +x scripts/fix-permissions.sh 2>/dev/null || true
+          ./scripts/fix-permissions.sh --cleanup-workspace || {
+            echo "⚠️ Script failed, using manual cleanup..."
+            sudo chown -R $USER:$USER . || true
+            sudo chmod -R 755 . || true
+            sudo rm -rf public/audios public/models emlinh_mng/instance || true
+          }
+        else
+          echo "⚠️ Script not found, using manual cleanup..."
+          sudo chown -R $USER:$USER . || true
+          sudo chmod -R 755 . || true
+          sudo rm -rf public/audios public/models emlinh_mng/instance || true
+        fi
+        echo "✅ Pre-cleanup completed"
+    
     - name: Checkout code
       uses: actions/checkout@v4
       with:
@@ -66,6 +86,26 @@ jobs:
     if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main')
     
     steps:
+    - name: Pre-cleanup workspace permissions
+      run: |
+        echo "🧹 Pre-cleaning workspace for deployment checkout..."
+        # Sử dụng script nếu có, fallback về manual
+        if [ -f "scripts/fix-permissions.sh" ]; then
+          chmod +x scripts/fix-permissions.sh 2>/dev/null || true
+          ./scripts/fix-permissions.sh --cleanup-workspace || {
+            echo "⚠️ Script failed, using manual cleanup..."
+            sudo chown -R $USER:$USER . || true
+            sudo chmod -R 755 . || true
+            sudo rm -rf public/audios public/models emlinh_mng/instance || true
+          }
+        else
+          echo "⚠️ Script not found, using manual cleanup..."
+          sudo chown -R $USER:$USER . || true
+          sudo chmod -R 755 . || true
+          sudo rm -rf public/audios public/models emlinh_mng/instance || true
+        fi
+        echo "✅ Pre-cleanup completed"
+    
     - name: Checkout code
       uses: actions/checkout@v4
 
@@ -186,6 +226,26 @@ jobs:
     if: always()
     
     steps:
+    - name: Final workspace cleanup
+      run: |
+        echo "🧹 Final workspace cleanup..."
+        # Sử dụng script nếu có, fallback về manual
+        if [ -f "scripts/fix-permissions.sh" ]; then
+          chmod +x scripts/fix-permissions.sh 2>/dev/null || true
+          ./scripts/fix-permissions.sh --cleanup-workspace || {
+            echo "⚠️ Script failed, using manual cleanup..."
+            sudo chown -R $USER:$USER . || true
+            sudo chmod -R 755 . || true
+            sudo rm -rf public/audios public/models emlinh_mng/instance || true
+          }
+        else
+          echo "⚠️ Script not found, using manual cleanup..."
+          sudo chown -R $USER:$USER . || true
+          sudo chmod -R 755 . || true
+          sudo rm -rf public/audios public/models emlinh_mng/instance || true
+        fi
+        echo "✅ Final cleanup completed"
+        
     - name: Notify deployment status
       run: |
         if [ "${{ needs.deploy.result }}" == "success" ]; then
