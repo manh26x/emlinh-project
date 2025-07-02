@@ -64,6 +64,7 @@ ENV PYTHONPATH=/app/emlinh_mng
 ENV FLASK_APP=src.app.run:app
 ENV FLASK_ENV=production
 ENV PYTHONUNBUFFERED=1
+ENV WORKSPACE_ROOT=/app
 
 # Create app user
 RUN useradd --create-home --shell /bin/bash app
@@ -84,6 +85,10 @@ WORKDIR /app
 COPY emlinh_mng/ ./emlinh_mng/
 COPY emlinh-remotion/ ./emlinh-remotion/
 
+# Copy and setup permission fix script (before switching to non-root user)
+COPY scripts/docker-fix-permissions.sh /app/fix-permissions.sh
+RUN chmod +x /app/fix-permissions.sh
+
 # Set permissions
 RUN chown -R app:app /app
 
@@ -103,17 +108,37 @@ RUN cat > /app/start.sh <<EOF && \
 #!/bin/bash
 set -e
 
+echo "Starting emlinh application..."
+
+# Fix permissions first
+/app/fix-permissions.sh
+
+# Create required directories only if they don't exist and are writable
+[ ! -d "/app/emlinh-remotion/out" ] && mkdir -p /app/emlinh-remotion/out 2>/dev/null || true
+[ ! -d "/app/emlinh-remotion/public/audios" ] && mkdir -p /app/emlinh-remotion/public/audios 2>/dev/null || true
+[ ! -d "/tmp/emlinh_audio" ] && mkdir -p /tmp/emlinh_audio 2>/dev/null || true
+
 # Start emlinh-remotion in background
-cd /app/emlinh-remotion && npm start &
+echo "Starting Remotion studio..."
+cd /app/emlinh-remotion && npm start > /tmp/remotion.log 2>&1 &
+REMOTION_PID=\$!
+
+# Give remotion a moment to start
+sleep 5
 
 # Start emlinh_mng
-cd /app/emlinh_mng && python3 -m src.app.run
+echo "Starting Flask application..."
+cd /app/emlinh_mng && python3 -m src.app.run &
+FLASK_PID=\$!
 
-# Wait for any process to exit
-wait -n
+# Monitor both processes
+while kill -0 \$REMOTION_PID 2>/dev/null && kill -0 \$FLASK_PID 2>/dev/null; do
+    sleep 10
+done
 
-# Exit with status of process that exited first
-exit \$?
+echo "One of the processes died, shutting down..."
+kill \$REMOTION_PID \$FLASK_PID 2>/dev/null || true
+wait
 EOF
 
 CMD ["/app/start.sh"]

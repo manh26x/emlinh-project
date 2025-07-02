@@ -6,17 +6,31 @@ from datetime import datetime
 from typing import Dict, Any, Optional
 import openai
 from pathlib import Path
+from ..app.config import Config
 
 
 class TTSService:
     def __init__(self):
-        # Đường dẫn đến dự án và thư mục audio
-        workspace_root = '/home/mike/Documents/Code/emlinh_projects'
-        self.remotion_path = os.path.join(workspace_root, 'emlinh-remotion')
-        self.audio_dir = os.path.join(self.remotion_path, 'public', 'audios')
+        # Sử dụng config để lấy đường dẫn
+        self.remotion_path = Config.REMOTION_PATH
+        self.audio_dir = Config.AUDIO_OUTPUT_DIR
         
-        # Đảm bảo thư mục audio tồn tại
-        os.makedirs(self.audio_dir, exist_ok=True)
+        # Đảm bảo thư mục audio tồn tại với error handling
+        try:
+            # Sử dụng method từ Config để tạo directories
+            Config.ensure_directories()
+        except Exception as e:
+            print(f"Warning: Could not create audio directory {self.audio_dir}: {e}")
+            # Fallback to /tmp if main path fails
+            self.audio_dir = '/tmp/emlinh_audio'
+            # Chỉ tạo thư mục temp nếu có quyền
+            try:
+                if os.access('/tmp', os.W_OK):
+                    os.makedirs(self.audio_dir, exist_ok=True)
+                else:
+                    print(f"Warning: No write permission to /tmp, audio directory not created")
+            except (OSError, PermissionError) as e:
+                print(f"Warning: Could not create temp audio directory: {e}")
         
         # OpenAI client
         self.client = openai.OpenAI()

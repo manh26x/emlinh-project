@@ -122,7 +122,8 @@ def register_routes(app, socketio=None):
                 )
             
             # Thử tìm trong thư mục remotion output nếu file path gốc không tồn tại
-            remotion_output_dir = '/home/mike/Documents/Code/emlinh_projects/emlinh-remotion/out'
+            from .config import Config
+            remotion_output_dir = Config.REMOTION_OUTPUT_DIR
             alternative_path = os.path.join(remotion_output_dir, video.file_name)
             
             if os.path.exists(alternative_path):

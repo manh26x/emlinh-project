@@ -20,10 +20,35 @@ jobs:
     if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.merged == true)
     
     steps:
+    - name: Pre-checkout permission fix
+      run: |
+        echo "🔧 Pre-checkout permission fix..."
+        
+        # Fix toàn bộ workspace trước khi checkout
+        sudo chown -R $USER:$USER ${{ github.workspace }} 2>/dev/null || true
+        sudo chmod -R 755 ${{ github.workspace }} 2>/dev/null || true
+        
+        # Xóa specifically các thư mục problematic
+        sudo rm -rf ${{ github.workspace }}/public/audios ${{ github.workspace }}/public/models 2>/dev/null || true
+        sudo rm -rf ${{ github.workspace }}/emlinh_mng/instance 2>/dev/null || true
+        
+        # Cleanup Docker resources nếu có
+        docker system prune -af 2>/dev/null || true
+        
+        echo "✅ Pre-checkout permission fix completed"
+    
     - name: Checkout code
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
+        clean: false
+        
+    - name: Post-checkout directory setup
+      run: |
+        echo "📁 Setting up directories after checkout..."
+        mkdir -p public/audios public/models emlinh_mng/instance
+        chmod -R 755 public/ emlinh_mng/instance/ 2>/dev/null || true
+        echo "✅ Directory setup completed"
 
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -104,28 +129,136 @@ print('✅ Facebook configuration integration verified')
     if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main')
     
     steps:
+    - name: Pre-checkout permission fix
+      run: |
+        echo "🔧 Pre-checkout permission fix for deployment..."
+        
+        # Stop containers để tránh file locks
+        docker compose down --remove-orphans 2>/dev/null || true
+        
+        # Fix toàn bộ workspace ownership
+        sudo chown -R $USER:$USER ${{ github.workspace }} 2>/dev/null || true
+        sudo chmod -R 755 ${{ github.workspace }} 2>/dev/null || true
+        
+        # Xóa specifically các thư mục có thể có permission issues
+        sudo rm -rf ${{ github.workspace }}/public/audios ${{ github.workspace }}/public/models 2>/dev/null || true
+        sudo rm -rf ${{ github.workspace }}/emlinh_mng/instance 2>/dev/null || true
+        
+        # Cleanup Docker system
+        docker system prune -af --volumes 2>/dev/null || true
+        
+        echo "✅ Pre-checkout permission fix completed"
+    
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        clean: false
 
     - name: Create environment file
       run: |
         cat > .env << EOFENV
+        # Core application settings
         SECRET_KEY=${{ secrets.SECRET_KEY }}
         DATABASE_URL=${{ secrets.DATABASE_URL }}
+        FLASK_ENV=production
+        
+        # Workspace configuration
+        WORKSPACE_ROOT=${{ github.workspace }}
+        
+        # AI/ML services
         OLLAMA_BASE_URL=${{ secrets.OLLAMA_BASE_URL }}
+        OLLAMA_EMBED_MODEL=${{ secrets.OLLAMA_EMBED_MODEL || 'nomic-embed-text' }}
+        EMBEDDING_DIMENSION=${{ secrets.EMBEDDING_DIMENSION || '768' }}
+        
+        # OpenAI API
         OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+        
+        # Facebook API (Issue #13)
         FACEBOOK_ACCESS_TOKEN=${{ secrets.FACEBOOK_ACCESS_TOKEN }}
         FACEBOOK_API_VERSION=v18.0
-        FLASK_ENV=production
+        
+        # SQLAlchemy settings
+        SQLALCHEMY_ECHO=${{ secrets.SQLALCHEMY_ECHO || 'False' }}
         EOFENV
 
     - name: Create necessary directories
       run: |
         mkdir -p public/audios public/models ssl
+        mkdir -p emlinh_mng/instance
+
+    - name: Copy environment file to Flask app directory
+      run: |
+        cp .env emlinh_mng/.env
+
+    - name: Validate environment and workspace setup
+      run: |
+        echo "🔍 Validating environment setup..."
+        echo "WORKSPACE_ROOT: ${{ github.workspace }}"
+        echo "Current directory: $(pwd)"
+        
+        # Validate required directories exist
+        if [ ! -d "emlinh_mng" ]; then
+          echo "❌ emlinh_mng directory not found"
+          exit 1
+        fi
+        
+        if [ ! -d "emlinh-remotion" ]; then
+          echo "❌ emlinh-remotion directory not found"
+          exit 1
+        fi
+        
+        # Check if .env files exist
+        if [ ! -f ".env" ]; then
+          echo "❌ Root .env file not found"
+          exit 1
+        fi
+        
+        if [ ! -f "emlinh_mng/.env" ]; then
+          echo "❌ Flask app .env file not found"
+          exit 1
+        fi
+        
+        echo "✅ Environment validation passed"
 
     - name: Stop existing containers
       run: |
         docker compose down --remove-orphans || true
+
+    - name: Fix permissions before cleanup
+      run: |
+        echo "🔧 Enhanced permission fix before cleanup..."
+        
+        # Sử dụng script fix-permissions helper nếu có
+        if [ -f "scripts/fix-permissions.sh" ]; then
+          chmod +x scripts/fix-permissions.sh 2>/dev/null || true
+          ./scripts/fix-permissions.sh || {
+            echo "⚠️ Script failed, using enhanced manual fix..."
+            
+            # Enhanced manual permission fix với force
+            sudo bash -c "
+              chown -R $USER:$USER public/ emlinh_mng/instance/ 2>/dev/null || true
+              chmod -R 755 public/ emlinh_mng/instance/ 2>/dev/null || true
+              
+              # Tạo lại directories với proper permissions
+              mkdir -p public/audios public/models emlinh_mng/instance 2>/dev/null || true
+              chown -R $USER:$USER public/ emlinh_mng/instance/ 2>/dev/null || true
+              chmod -R 755 public/ emlinh_mng/instance/ 2>/dev/null || true
+            " || true
+          }
+        else
+          echo "⚠️ Script not found, using enhanced manual fix..."
+          sudo bash -c "
+            chown -R $USER:$USER public/ emlinh_mng/instance/ 2>/dev/null || true
+            chmod -R 755 public/ emlinh_mng/instance/ 2>/dev/null || true
+            
+            # Tạo lại directories với proper permissions
+            mkdir -p public/audios public/models emlinh_mng/instance 2>/dev/null || true
+            chown -R $USER:$USER public/ emlinh_mng/instance/ 2>/dev/null || true
+            chmod -R 755 public/ emlinh_mng/instance/ 2>/dev/null || true
+          " || true
+        fi
+        
+        echo "✅ Enhanced permission fix completed"
 
     - name: Remove old images
       run: |
@@ -151,12 +284,67 @@ print('✅ Facebook configuration integration verified')
         docker image prune -af
         docker volume prune -f
 
+    - name: Final cleanup and permission fix
+      run: |
+        echo "🧹 Final cleanup with enhanced permission management..."
+        
+        # Enhanced final cleanup với better error handling
+        sudo bash -c "
+          echo 'Stopping any remaining containers...'
+          docker compose down --remove-orphans 2>/dev/null || true
+          
+          echo 'Fixing workspace ownership recursively...'
+          chown -R $USER:$USER . 2>/dev/null || echo 'Warning: Some ownership changes failed'
+          chmod -R 755 . 2>/dev/null || echo 'Warning: Some permission changes failed'
+          
+          echo 'Cleaning problematic directories thoroughly...'
+          rm -rf public/audios/* public/models/* emlinh_mng/instance/* 2>/dev/null || true
+          
+          echo 'Recreating directories with proper permissions...'
+          mkdir -p public/audios public/models emlinh_mng/instance 2>/dev/null || true
+          chown -R $USER:$USER public/ emlinh_mng/instance/ 2>/dev/null || true
+          chmod -R 755 public/ emlinh_mng/instance/ 2>/dev/null || true
+          
+          echo 'Final cleanup commands completed successfully'
+        " || {
+          echo "⚠️ Some final cleanup operations failed, but continuing..."
+        }
+        
+        echo "✅ Final cleanup completed"
+      if: always()
+
   notification:
     runs-on: self-hosted
     needs: [test, deploy]
     if: always()
     
     steps:
+    - name: Final workspace cleanup
+      run: |
+        echo "🧹 Final workspace cleanup với enhanced permission handling..."
+        
+        # Enhanced final cleanup strategy
+        sudo bash -c "
+          echo 'Stopping all containers and cleaning Docker...'
+          docker compose down --remove-orphans --volumes 2>/dev/null || true
+          docker system prune -af --volumes 2>/dev/null || true
+          
+          echo 'Comprehensive workspace permission fix...'
+          if [ -d '${{ github.workspace }}' ]; then
+            chown -R $USER:$USER '${{ github.workspace }}' 2>/dev/null || echo 'Warning: Failed to change workspace ownership'
+            chmod -R 755 '${{ github.workspace }}' 2>/dev/null || echo 'Warning: Failed to change workspace permissions'
+            
+            # Remove problematic directories completely
+            rm -rf '${{ github.workspace }}/public/audios' '${{ github.workspace }}/public/models' '${{ github.workspace }}/emlinh_mng/instance' 2>/dev/null || true
+          fi
+          
+          echo 'Enhanced final cleanup commands completed'
+        " || {
+          echo "⚠️ Enhanced cleanup completed with some warnings (expected)"
+        }
+        
+        echo "✅ Enhanced final cleanup completed"
+        
     - name: Notify deployment status
       run: |
         if [ "${{ needs.deploy.result }}" == "success" ]; then
