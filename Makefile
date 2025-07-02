@@ -31,6 +31,32 @@ test: ## Chạy tests cho cả Python và Node.js
 	cd emlinh-remotion && npm run lint || true
 	@echo "$(GREEN)✅ Tests completed!$(NC)"
 
+test-facebook: ## Chạy Facebook Service tests
+	@echo "$(GREEN)🧪 Running Facebook Service Tests...$(NC)"
+	@cd emlinh_mng && export PYTHONPATH=src:$$PYTHONPATH && \
+	export FACEBOOK_ACCESS_TOKEN=test_token_makefile && \
+	export FACEBOOK_API_VERSION=v18.0 && \
+	echo "🔍 Running Simple Tests..." && \
+	python src/tests/test_facebook_service_simple.py && \
+	echo "✅ Simple tests passed" && \
+	echo "🔍 Running Complete Tests..." && \
+	python src/tests/test_facebook_complete.py && \
+	echo "✅ Complete tests passed" && \
+	echo "🔍 Testing imports..." && \
+	python -c "import sys; sys.path.insert(0, 'src/services'); from facebook_service import FacebookService, create_facebook_service, validate_facebook_token; print('✅ Import tests passed')" && \
+	echo "🔍 Testing configuration..." && \
+	python -c "import sys; sys.path.insert(0, 'src'); from app.config import Config; assert hasattr(Config, 'FACEBOOK_ACCESS_TOKEN'); print('✅ Config tests passed')"
+	@echo "$(GREEN)🎉 All Facebook Service tests completed successfully!$(NC)"
+
+test-facebook-ci: ## Chạy Facebook Service tests với CI format
+	@echo "$(GREEN)🧪 Running Facebook Service Tests (CI Format)...$(NC)"
+	@cd emlinh_mng && export PYTHONPATH=src:$$PYTHONPATH && \
+	export FACEBOOK_ACCESS_TOKEN=test_token_ci && \
+	export FACEBOOK_API_VERSION=v18.0 && \
+	python src/tests/test_facebook_service_simple.py && \
+	python src/tests/test_facebook_complete.py
+	@echo "$(GREEN)✅ Facebook Service CI tests passed!$(NC)"
+
 deploy: ## Deploy application với Docker Compose
 	@echo "$(GREEN)🚀 Deploying application...$(NC)"
 	@make build

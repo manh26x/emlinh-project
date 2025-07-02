@@ -10,6 +10,9 @@ on:
 env:
   DOCKER_BUILDKIT: 1
   COMPOSE_DOCKER_CLI_BUILD: 1
+  # Facebook Service Test Environment
+  FACEBOOK_ACCESS_TOKEN: test_token_for_deploy_pipeline
+  FACEBOOK_API_VERSION: v18.0
 
 jobs:
   test:
@@ -50,6 +53,41 @@ jobs:
         cd emlinh_mng
         python -m pytest src/tests/ -v || true
 
+    - name: 🧪 Run Facebook Service Tests
+      run: |
+        cd emlinh_mng
+        export PYTHONPATH=src:$PYTHONPATH
+        echo "🔍 Running Facebook Service Unit Tests..."
+        
+        # Run Simple Tests
+        python src/tests/test_facebook_service_simple.py
+        echo "✅ Simple tests passed"
+        
+        # Run Complete Tests
+        python src/tests/test_facebook_complete.py
+        echo "✅ Complete tests passed"
+        
+        # Test imports
+        python -c "
+import sys
+sys.path.insert(0, 'src/services')
+from facebook_service import FacebookService, create_facebook_service, validate_facebook_token
+print('✅ All Facebook Service imports successful')
+"
+        
+        # Test configuration
+        python -c "
+import sys
+sys.path.insert(0, 'src')
+from app.config import Config
+assert hasattr(Config, 'FACEBOOK_ACCESS_TOKEN')
+assert hasattr(Config, 'FACEBOOK_API_VERSION') 
+assert hasattr(Config, 'FACEBOOK_BASE_URL')
+print('✅ Facebook configuration integration verified')
+"
+        
+        echo "🎉 All Facebook Service tests completed successfully!"
+
     - name: Run Node.js tests
       run: |
         cd emlinh-remotion
@@ -76,6 +114,8 @@ jobs:
         DATABASE_URL=${{ secrets.DATABASE_URL }}
         OLLAMA_BASE_URL=${{ secrets.OLLAMA_BASE_URL }}
         OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+        FACEBOOK_ACCESS_TOKEN=${{ secrets.FACEBOOK_ACCESS_TOKEN }}
+        FACEBOOK_API_VERSION=v18.0
         FLASK_ENV=production
         EOFENV
 
