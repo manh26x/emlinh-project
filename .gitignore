@@ -81,7 +81,9 @@ yarn-debug.log*
 yarn-error.log*
 
 # Build files
-out/
+out/*
+!out/
+!out/.gitkeep
 build/
 dist/
 
@@ -92,4 +94,7 @@ logs/
 # Temporary files
 *.tmp
 *.temp 
+
+# Audio files - keep folder but ignore content
 emlinh-remotion/public/audios/*
+!emlinh-remotion/public/audios/.gitkeep

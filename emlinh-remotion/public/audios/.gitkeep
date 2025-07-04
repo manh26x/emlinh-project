@@ -1,0 +1,2 @@
+# This file ensures the 'audios' directory is tracked by git
+# even when it's empty. Audio files for video generation will be placed here. 

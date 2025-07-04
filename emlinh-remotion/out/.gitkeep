@@ -1,0 +1,2 @@
+# This file ensures the 'out' directory is tracked by git
+# even when it's empty. Build artifacts will be placed here. 
