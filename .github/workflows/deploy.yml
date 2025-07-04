@@ -284,22 +284,20 @@ jobs:
         echo "🐍 Installing Python dependencies for production on host..."
         cd emlinh_mng
         
-        # Remove old virtual environment if exists
+        # Create virtual environment with system Python
         rm -rf venv 2>/dev/null || true
+        python3 -m venv venv --system-site-packages
         
-        # Create fresh virtual environment
-        python3 -m venv venv
-        echo "✅ Fresh virtual environment created"
-        
-        # Activate virtual environment and install dependencies
+        # Activate and install dependencies
         source venv/bin/activate
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install gunicorn  # For production WSGI server
+        pip install gunicorn
         
-        # Verify installation
+        # Verify installation works
         python -c "import flask; print(f'Flask version: {flask.__version__}')"
-        gunicorn --version
+        python -c "import gunicorn; print(f'Gunicorn version: {gunicorn.__version__}')"
+        python -c "from wsgi import application; print('✅ WSGI import successful')"
         
         echo "✅ Python production dependencies installed in virtual environment"
 
@@ -347,8 +345,8 @@ jobs:
         # Initialize database if needed
         python -c "import sys; sys.path.insert(0, 'src'); from app.app import create_app; from app.models import db; app = create_app(); exec('with app.app_context():\n    db.create_all()\n    print(\"✅ Database initialized\")')" || echo "⚠️ Database initialization completed with warnings"
         
-        # Start Flask app with Gunicorn for production using venv python
-        nohup venv/bin/gunicorn --bind 0.0.0.0:${{ env.FLASK_PORT }} --workers 2 --timeout 60 wsgi:application > flask.log 2>&1 &
+        # Start Flask app with Gunicorn for production
+        nohup gunicorn --bind 0.0.0.0:${{ env.FLASK_PORT }} --workers 2 --timeout 60 wsgi:application > flask.log 2>&1 &
         
         # Store Flask PID for later management
         echo $! > ../flask.pid
@@ -403,7 +401,8 @@ jobs:
         echo '#!/bin/bash' > start_app.sh
         echo 'echo "🚀 Starting EmLinh applications on host..."' >> start_app.sh
         echo 'cd emlinh_mng' >> start_app.sh
-        echo 'nohup venv/bin/gunicorn --bind 0.0.0.0:5000 --workers 2 --timeout 60 wsgi:application > flask.log 2>&1 &' >> start_app.sh
+        echo 'source venv/bin/activate' >> start_app.sh
+        echo 'nohup gunicorn --bind 0.0.0.0:5000 --workers 2 --timeout 60 wsgi:application > flask.log 2>&1 &' >> start_app.sh
         echo 'echo $! > ../flask.pid' >> start_app.sh
         echo 'echo "✅ Flask app started (PID: $(cat ../flask.pid))"' >> start_app.sh
         echo 'echo "🎉 Applications started successfully!"' >> start_app.sh
