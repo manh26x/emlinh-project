@@ -288,18 +288,47 @@ jobs:
         rm -rf venv 2>/dev/null || true
         python3 -m venv venv --system-site-packages
         
-        # Activate and install dependencies
+        # Activate and install dependencies with error checking
         source venv/bin/activate
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install gunicorn
         
-        # Verify installation works
-        python -c "import flask; print(f'Flask version: {flask.__version__}')"
-        python -c "import gunicorn; print(f'Gunicorn version: {gunicorn.__version__}')"
-        python -c "from wsgi import application; print('✅ WSGI import successful')"
+        echo "📦 Upgrading pip..."
+        python -m pip install --upgrade pip || {
+          echo "❌ Failed to upgrade pip"
+          exit 1
+        }
         
-        echo "✅ Python production dependencies installed in virtual environment"
+        echo "📦 Installing requirements.txt..."
+        pip install -r requirements.txt || {
+          echo "❌ Failed to install requirements.txt"
+          cat requirements.txt
+          exit 1
+        }
+        
+        echo "📦 Installing gunicorn..."
+        pip install gunicorn || {
+          echo "❌ Failed to install gunicorn"
+          exit 1
+        }
+        
+        echo "🔍 Verifying installations..."
+        python -c "import flask; print(f'✅ Flask version: {flask.__version__}')" || {
+          echo "❌ Flask import failed"
+          exit 1
+        }
+        
+        python -c "import gunicorn; print(f'✅ Gunicorn version: {gunicorn.__version__}')" || {
+          echo "❌ Gunicorn import failed"
+          exit 1
+        }
+        
+        which gunicorn && echo "✅ Gunicorn executable found at: $(which gunicorn)"
+        
+        python -c "from wsgi import application; print('✅ WSGI import successful')" || {
+          echo "❌ WSGI import failed"
+          exit 1
+        }
+        
+        echo "✅ All Python dependencies installed and verified successfully"
 
     - name: Setup Remotion for production on host
       run: |
