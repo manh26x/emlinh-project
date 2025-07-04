@@ -1,4 +1,4 @@
-name: Deploy to Self-Hosted Server
+name: Deploy to Self-Hosted Server (Direct Host Execution)
 
 on:
   push:
@@ -8,11 +8,14 @@ on:
     types: [ closed ]
 
 env:
-  DOCKER_BUILDKIT: 1
-  COMPOSE_DOCKER_CLI_BUILD: 1
   # Facebook Service Test Environment
   FACEBOOK_ACCESS_TOKEN: test_token_for_deploy_pipeline
   FACEBOOK_API_VERSION: v18.0
+  # Application Configuration
+  FLASK_PORT: 5000
+  NODE_PORT: 3000
+  PYTHON_VERSION: '3.10'
+  NODE_VERSION: '18'
 
 jobs:
   test:
@@ -20,23 +23,26 @@ jobs:
     if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.merged == true)
     
     steps:
-    - name: Pre-checkout permission fix
+    - name: Pre-checkout permission and process cleanup
       run: |
-        echo "🔧 Pre-checkout permission fix..."
+        echo "🔧 Pre-checkout cleanup for direct host execution..."
         
-        # Fix toàn bộ workspace trước khi checkout
+        # Stop any running Flask/Node processes from previous deployments
+        pkill -f "python.*app.py" 2>/dev/null || true
+        pkill -f "flask.*run" 2>/dev/null || true
+        pkill -f "node.*remotion" 2>/dev/null || true
+        pkill -f "npm.*start" 2>/dev/null || true
+        
+        # Fix workspace permissions
         sudo chown -R $USER:$USER ${{ github.workspace }} 2>/dev/null || true
         sudo chmod -R 755 ${{ github.workspace }} 2>/dev/null || true
         
-        # Xóa specifically các thư mục problematic
+        # Clean up application directories
         sudo rm -rf ${{ github.workspace }}/public/audios ${{ github.workspace }}/public/models 2>/dev/null || true
         sudo rm -rf ${{ github.workspace }}/emlinh_mng/instance 2>/dev/null || true
         sudo rm -rf ${{ github.workspace }}/emlinh-remotion/out ${{ github.workspace }}/emlinh-remotion/public/audios 2>/dev/null || true
         
-        # Cleanup Docker resources nếu có
-        docker system prune -af 2>/dev/null || true
-        
-        echo "✅ Pre-checkout permission fix completed"
+        echo "✅ Pre-checkout cleanup completed"
     
     - name: Checkout code
       uses: actions/checkout@v4
@@ -46,50 +52,55 @@ jobs:
         
     - name: Post-checkout directory setup
       run: |
-        echo "📁 Setting up directories after checkout..."
+        echo "📁 Setting up directories for direct host execution..."
         mkdir -p public/audios public/models emlinh_mng/instance
         mkdir -p emlinh-remotion/out emlinh-remotion/public/audios
         chmod -R 755 public/ emlinh_mng/instance/ emlinh-remotion/out/ emlinh-remotion/public/audios/ 2>/dev/null || true
         echo "✅ Directory setup completed"
 
-    - name: Set up Python
+    - name: Set up Python environment
       uses: actions/setup-python@v4
       with:
-        python-version: '3.10'
+        python-version: ${{ env.PYTHON_VERSION }}
 
-    - name: Set up Node.js
+    - name: Set up Node.js environment
       uses: actions/setup-node@v4
       with:
-        node-version: '18'
+        node-version: ${{ env.NODE_VERSION }}
         cache: 'npm'
         cache-dependency-path: emlinh-remotion/package-lock.json
 
     - name: Install Python dependencies
       run: |
+        echo "🐍 Installing Python dependencies for direct execution..."
         cd emlinh_mng
         python -m pip install --upgrade pip
         pip install -r requirements.txt
+        echo "✅ Python dependencies installed"
 
     - name: Install Node.js dependencies
       run: |
-        echo "📦 Installing Node.js dependencies for testing (skip Remotion CLI test)..."
+        echo "📦 Installing Node.js dependencies for direct execution..."
         cd emlinh-remotion
         npm ci || {
           echo "⚠️ npm ci failed, trying npm install..."
           npm install
         }
-        echo "✅ Node.js dependencies installed (Remotion CLI will be tested in deployment)"
+        echo "✅ Node.js dependencies installed"
 
     - name: Run Python tests
       run: |
+        echo "🧪 Running Python tests on host environment..."
         cd emlinh_mng
+        export PYTHONPATH=src:$PYTHONPATH
         python -m pytest src/tests/ -v || true
+        echo "✅ Python tests completed"
 
     - name: 🧪 Run Facebook Service Tests
       run: |
+        echo "🔍 Running Facebook Service tests on host environment..."
         cd emlinh_mng
         export PYTHONPATH=src:$PYTHONPATH
-        echo "🔍 Running Facebook Service Unit Tests..."
         
         # Run Simple Tests
         python src/tests/test_facebook_service_simple.py
@@ -107,21 +118,45 @@ jobs:
         
         echo "🎉 All Facebook Service tests completed successfully!"
 
-    - name: Run Node.js tests (skip Remotion CLI test)
+    - name: Run Node.js tests and validation
       run: |
+        echo "🔍 Running Node.js validation on host environment..."
         cd emlinh-remotion
-        echo "🔍 Running basic Node.js validation..."
         npm run lint || echo "⚠️ Lint warnings (non-blocking)"
         
-        # Skip CLI test in CI, will be tested in deployment
-        echo "ℹ️ Skipping Remotion CLI test in CI phase"
-        echo "   Remotion will be tested during deployment phase"
+        # Test Remotion CLI availability
+        npx remotion --version || echo "⚠️ Remotion CLI test warning (non-blocking)"
+        
         echo "✅ Node.js validation completed"
 
-    - name: Build Docker images
+    - name: Test Flask app startup
       run: |
-        docker build --target production -t emlinh-app:latest .
-        docker system prune -f
+        echo "🌶️ Testing Flask application startup..."
+        cd emlinh_mng
+        # Create test environment file
+        cat > .env.test << 'EOF'
+        SECRET_KEY=test_key_for_startup_check
+        DATABASE_URL=sqlite:///test.db
+        FLASK_ENV=development
+        OLLAMA_BASE_URL=http://localhost:11434
+        OLLAMA_EMBED_MODEL=nomic-embed-text
+        EMBEDDING_DIMENSION=768
+        FACEBOOK_ACCESS_TOKEN=test_token
+        FACEBOOK_API_VERSION=v18.0
+        SQLALCHEMY_ECHO=False
+        EOF
+        
+        # Test app import and basic startup
+        timeout 30 python -c "
+import sys
+sys.path.insert(0, 'src')
+from app.app import create_app
+app = create_app()
+print('✅ Flask app can be created successfully')
+" || echo "⚠️ Flask startup test completed with warnings"
+        
+        rm -f .env.test test.db
+        echo "✅ Flask application startup test completed"
 
   deploy:
     runs-on: self-hosted
@@ -129,42 +164,62 @@ jobs:
     if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main')
     
     steps:
-    - name: Pre-checkout permission fix
+    - name: Pre-deployment cleanup
       run: |
-        echo "🔧 Pre-checkout permission fix for deployment..."
+        echo "🔧 Pre-deployment cleanup for direct host execution..."
         
-        # Stop containers để tránh file locks
-        docker compose down --remove-orphans 2>/dev/null || true
+        # Stop any existing application processes
+        pkill -f "python.*app.py" 2>/dev/null || true
+        pkill -f "flask.*run" 2>/dev/null || true
+        pkill -f "node.*remotion" 2>/dev/null || true
+        pkill -f "npm.*start" 2>/dev/null || true
+        pkill -f "gunicorn" 2>/dev/null || true
         
-        # Fix toàn bộ workspace ownership
+        # Wait for processes to stop
+        sleep 5
+        
+        # Fix workspace permissions
         sudo chown -R $USER:$USER ${{ github.workspace }} 2>/dev/null || true
         sudo chmod -R 755 ${{ github.workspace }} 2>/dev/null || true
         
-        # Xóa specifically các thư mục có thể có permission issues
+        # Clean up application directories
         sudo rm -rf ${{ github.workspace }}/public/audios ${{ github.workspace }}/public/models 2>/dev/null || true
         sudo rm -rf ${{ github.workspace }}/emlinh_mng/instance 2>/dev/null || true
         sudo rm -rf ${{ github.workspace }}/emlinh-remotion/out ${{ github.workspace }}/emlinh-remotion/public/audios 2>/dev/null || true
         
-        # Cleanup Docker system
-        docker system prune -af --volumes 2>/dev/null || true
-        
-        echo "✅ Pre-checkout permission fix completed"
+        echo "✅ Pre-deployment cleanup completed"
     
     - name: Checkout code
       uses: actions/checkout@v4
       with:
         clean: false
 
-    - name: Create environment file
+    - name: Set up Python environment for deployment
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Set up Node.js environment for deployment
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+
+    - name: Create production environment file
       run: |
+        echo "🔧 Creating production environment configuration..."
         cat > .env << 'EOF'
         # Core application settings
         SECRET_KEY=${{ secrets.SECRET_KEY }}
         DATABASE_URL=${{ secrets.DATABASE_URL }}
         FLASK_ENV=production
         
-        # Workspace configuration
+        # Host execution configuration (no Docker)
         WORKSPACE_ROOT=${{ github.workspace }}
+        HOST_EXECUTION=true
+        
+        # Application ports for direct host execution
+        FLASK_PORT=5000
+        NODE_PORT=3000
         
         # AI/ML services
         OLLAMA_BASE_URL=${{ secrets.OLLAMA_BASE_URL }}
@@ -181,23 +236,30 @@ jobs:
         # SQLAlchemy settings
         SQLALCHEMY_ECHO=${{ secrets.SQLALCHEMY_ECHO || 'False' }}
         EOF
+        echo "✅ Production environment file created"
 
-    - name: Create necessary directories
+    - name: Create necessary directories for host execution
       run: |
+        echo "📁 Creating directories for direct host execution..."
         mkdir -p public/audios public/models ssl
         mkdir -p emlinh_mng/instance
         mkdir -p emlinh-remotion/out emlinh-remotion/public/audios
         chmod -R 755 public/ emlinh_mng/instance/ emlinh-remotion/out/ emlinh-remotion/public/audios/
+        echo "✅ Directories created with proper permissions"
 
     - name: Copy environment file to Flask app directory
       run: |
         cp .env emlinh_mng/.env
+        echo "✅ Environment file copied to Flask application"
 
     - name: Validate environment and workspace setup
       run: |
-        echo "🔍 Validating environment setup..."
+        echo "🔍 Validating environment setup for direct host execution..."
         echo "WORKSPACE_ROOT: ${{ github.workspace }}"
         echo "Current directory: $(pwd)"
+        echo "Python version: $(python --version)"
+        echo "Node.js version: $(node --version)"
+        echo "npm version: $(npm --version)"
         
         # Validate required directories exist
         if [ ! -d "emlinh_mng" ]; then
@@ -223,148 +285,181 @@ jobs:
         
         echo "✅ Environment validation passed"
 
-    - name: Setup Remotion for production deployment
+    - name: Install production Python dependencies
       run: |
-        echo "🎬 Setting up Remotion for production deployment..."
+        echo "🐍 Installing Python dependencies for production on host..."
+        cd emlinh_mng
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install gunicorn  # For production WSGI server
+        echo "✅ Python production dependencies installed"
+
+    - name: Setup Remotion for production on host
+      run: |
+        echo "🎬 Setting up Remotion for production on host..."
         cd emlinh-remotion
         
-        # Ensure Node.js and npm are available
-        echo "🔍 Environment check:"
-        echo "   Node.js: $(node --version)"
-        echo "   npm: $(npm --version)"
-        
-        # Install dependencies if not present or incomplete
-        if [ ! -d "node_modules" ] || [ ! -f "node_modules/.package-lock.json" ]; then
-          echo "📦 Installing Remotion dependencies..."
-          npm install || {
-            echo "⚠️ npm install failed, trying alternative methods..."
-            npm ci || npm install --legacy-peer-deps || true
-          }
-        else
-          echo "✅ Dependencies already installed"
-        fi
-        
-        # Basic validation of critical packages
-        echo "🧪 Validating critical packages..."
-        if [ -d "node_modules/@remotion" ]; then
-          echo "✅ @remotion packages found"
-        else
-          echo "⚠️ @remotion packages not found, but continuing..."
-        fi
-        
-        if [ -d "node_modules/react" ]; then
-          echo "✅ React found"
-        else
-          echo "⚠️ React not found, but continuing..."
-        fi
+        # Install dependencies
+        npm install || {
+          echo "⚠️ npm install failed, trying alternative methods..."
+          npm ci || npm install --legacy-peer-deps || true
+        }
         
         # Test Remotion CLI with timeout (non-blocking)
-        echo "🎬 Testing Remotion CLI (non-blocking)..."
+        echo "🎬 Testing Remotion CLI for direct host execution..."
         timeout 30 npx remotion --version 2>/dev/null && {
-          echo "✅ Remotion CLI working"
+          echo "✅ Remotion CLI working on host"
         } || {
           echo "⚠️ Remotion CLI test failed or timed out"
-          echo "   This is non-blocking - application will use fallback mechanisms"
-          echo "   Video rendering may be affected but app will still deploy"
+          echo "   Application will use fallback mechanisms"
         }
         
-        echo "✅ Remotion setup completed (with potential warnings)"
+        echo "✅ Remotion setup completed for host execution"
 
-    - name: Stop existing containers
+    - name: Stop existing application processes
       run: |
-        docker compose down --remove-orphans || true
+        echo "🛑 Stopping existing application processes..."
+        pkill -f "python.*app.py" 2>/dev/null || true
+        pkill -f "flask.*run" 2>/dev/null || true
+        pkill -f "gunicorn" 2>/dev/null || true
+        pkill -f "node.*remotion" 2>/dev/null || true
+        pkill -f "npm.*start" 2>/dev/null || true
+        sleep 5
+        echo "✅ Existing processes stopped"
 
-    - name: Fix permissions before cleanup
+    - name: Start Flask application on host
       run: |
-        echo "🔧 Enhanced permission fix before cleanup..."
+        echo "🌶️ Starting Flask application directly on host..."
+        cd emlinh_mng
         
-        # Sử dụng script fix-permissions helper nếu có
-        if [ -f "scripts/fix-permissions.sh" ]; then
-          chmod +x scripts/fix-permissions.sh 2>/dev/null || true
-          ./scripts/fix-permissions.sh || {
-            echo "⚠️ Script failed, using enhanced manual fix..."
-            
-            # Enhanced manual permission fix với force
-            sudo bash -c "
-              chown -R $USER:$USER public/ emlinh_mng/instance/ 2>/dev/null || true
-              chmod -R 755 public/ emlinh_mng/instance/ 2>/dev/null || true
-              
-              # Tạo lại directories với proper permissions
-              mkdir -p public/audios public/models emlinh_mng/instance 2>/dev/null || true
-              mkdir -p emlinh-remotion/out emlinh-remotion/public/audios 2>/dev/null || true
-              chown -R $USER:$USER public/ emlinh_mng/instance/ emlinh-remotion/out/ emlinh-remotion/public/audios/ 2>/dev/null || true
-              chmod -R 755 public/ emlinh_mng/instance/ emlinh-remotion/out/ emlinh-remotion/public/audios/ 2>/dev/null || true
-            " || true
-          }
+        # Initialize database if needed
+        python -c "
+import sys
+sys.path.insert(0, 'src')
+from app.app import create_app
+from app.models import db
+app = create_app()
+with app.app_context():
+    db.create_all()
+    print('✅ Database initialized')
+" || echo "⚠️ Database initialization completed with warnings"
+        
+        # Start Flask app with Gunicorn for production
+        nohup gunicorn --bind 0.0.0.0:${{ env.FLASK_PORT }} --workers 2 --timeout 60 --pythonpath src app.app:app > flask.log 2>&1 &
+        
+        # Store Flask PID for later management
+        echo $! > ../flask.pid
+        
+        echo "✅ Flask application started on host (PID: $(cat ../flask.pid))"
+
+    - name: Wait for Flask application to be ready
+      run: |
+        echo "⏳ Waiting for Flask application to be ready..."
+        timeout 120 bash -c '
+          until curl -f http://localhost:${{ env.FLASK_PORT }}/health >/dev/null 2>&1; do 
+            echo "Waiting for Flask app..."
+            sleep 5
+          done
+        ' && echo "✅ Flask application is ready" || {
+          echo "❌ Flask application failed to start properly"
+          echo "📋 Flask logs:"
+          cat emlinh_mng/flask.log || true
+          exit 1
+        }
+
+    - name: Verify deployment health
+      run: |
+        echo "🔍 Verifying deployment health..."
+        
+        # Check Flask app health
+        curl -f http://localhost:${{ env.FLASK_PORT }}/health || {
+          echo "❌ Flask health check failed"
+          exit 1
+        }
+        
+        # Check if Flask process is running
+        if [ -f "flask.pid" ] && kill -0 $(cat flask.pid) 2>/dev/null; then
+          echo "✅ Flask process is running (PID: $(cat flask.pid))"
         else
-          echo "⚠️ Script not found, using enhanced manual fix..."
-          sudo bash -c "
-            chown -R $USER:$USER public/ emlinh_mng/instance/ 2>/dev/null || true
-            chmod -R 755 public/ emlinh_mng/instance/ 2>/dev/null || true
-            
-            # Tạo lại directories với proper permissions
-            mkdir -p public/audios public/models emlinh_mng/instance 2>/dev/null || true
-            mkdir -p emlinh-remotion/out emlinh-remotion/public/audios 2>/dev/null || true
-            chown -R $USER:$USER public/ emlinh_mng/instance/ emlinh-remotion/out/ emlinh-remotion/public/audios/ 2>/dev/null || true
-            chmod -R 755 public/ emlinh_mng/instance/ emlinh-remotion/out/ emlinh-remotion/public/audios/ 2>/dev/null || true
-          " || true
+          echo "❌ Flask process is not running"
+          exit 1
         fi
         
-        echo "✅ Enhanced permission fix completed"
-
-    - name: Remove old images
-      run: |
-        docker system prune -af --volumes || true
-
-    - name: Build and start services
-      run: |
-        docker compose build --no-cache
-        docker compose up -d
-
-    - name: Wait for services to be healthy
-      run: |
-        timeout 300 bash -c 'until docker compose ps | grep -q "healthy\|Up"; do sleep 10; done'
-
-    - name: Verify deployment
-      run: |
-        sleep 30
-        curl -f http://localhost:5000/health || exit 1
-        echo "✅ Deployment successful!"
-
-    - name: Clean up old Docker resources
-      run: |
-        docker image prune -af
-        docker volume prune -f
-
-    - name: Final cleanup and permission fix
-      run: |
-        echo "🧹 Final cleanup with enhanced permission management..."
-        
-        # Enhanced final cleanup với better error handling
-        sudo bash -c "
-          echo 'Stopping any remaining containers...'
-          docker compose down --remove-orphans 2>/dev/null || true
-          
-          echo 'Fixing workspace ownership recursively...'
-          chown -R $USER:$USER . 2>/dev/null || echo 'Warning: Some ownership changes failed'
-          chmod -R 755 . 2>/dev/null || echo 'Warning: Some permission changes failed'
-          
-          echo 'Cleaning problematic directories thoroughly...'
-          rm -rf public/audios/* public/models/* emlinh_mng/instance/* emlinh-remotion/out/* emlinh-remotion/public/audios/* 2>/dev/null || true
-          
-          echo 'Recreating directories with proper permissions...'
-          mkdir -p public/audios public/models emlinh_mng/instance 2>/dev/null || true
-          mkdir -p emlinh-remotion/out emlinh-remotion/public/audios 2>/dev/null || true
-          chown -R $USER:$USER public/ emlinh_mng/instance/ emlinh-remotion/out/ emlinh-remotion/public/audios/ 2>/dev/null || true
-          chmod -R 755 public/ emlinh_mng/instance/ emlinh-remotion/out/ emlinh-remotion/public/audios/ 2>/dev/null || true
-          
-          echo 'Final cleanup commands completed successfully'
-        " || {
-          echo "⚠️ Some final cleanup operations failed, but continuing..."
+        # Test basic API endpoints
+        curl -f http://localhost:${{ env.FLASK_PORT }}/ >/dev/null || {
+          echo "⚠️ Root endpoint test failed"
         }
         
-        echo "✅ Final cleanup completed"
-      if: always()
+        echo "✅ Deployment health verification passed!"
+
+    - name: Create application management scripts
+      run: |
+        echo "📜 Creating application management scripts for host execution..."
+        
+        # Create start script
+        cat > start_app.sh << 'EOF'
+#!/bin/bash
+echo "🚀 Starting EmLinh applications on host..."
+
+cd emlinh_mng
+nohup gunicorn --bind 0.0.0.0:5000 --workers 2 --timeout 60 --pythonpath src app.app:app > flask.log 2>&1 &
+echo $! > ../flask.pid
+echo "✅ Flask app started (PID: $(cat ../flask.pid))"
+
+echo "🎉 Applications started successfully!"
+EOF
+
+        # Create stop script
+        cat > stop_app.sh << 'EOF'
+#!/bin/bash
+echo "🛑 Stopping EmLinh applications..."
+
+if [ -f "flask.pid" ]; then
+  kill $(cat flask.pid) 2>/dev/null || true
+  rm -f flask.pid
+  echo "✅ Flask app stopped"
+fi
+
+pkill -f "gunicorn" 2>/dev/null || true
+pkill -f "python.*app.py" 2>/dev/null || true
+
+echo "✅ All applications stopped"
+EOF
+
+        # Create status script
+        cat > status_app.sh << 'EOF'
+#!/bin/bash
+echo "📊 Application Status:"
+
+if [ -f "flask.pid" ] && kill -0 $(cat flask.pid) 2>/dev/null; then
+  echo "✅ Flask app is running (PID: $(cat flask.pid))"
+  curl -s http://localhost:5000/health && echo " - Health check passed"
+else
+  echo "❌ Flask app is not running"
+fi
+EOF
+
+        chmod +x start_app.sh stop_app.sh status_app.sh
+        echo "✅ Management scripts created"
+
+    - name: Final permission and cleanup setup
+      run: |
+        echo "🧹 Final permission and cleanup setup for host execution..."
+        
+        # Ensure proper permissions for application directories
+        sudo chown -R $USER:$USER . 2>/dev/null || true
+        chmod -R 755 . 2>/dev/null || true
+        
+        # Create log directory
+        mkdir -p logs
+        chmod 755 logs
+        
+        # Ensure application directories have correct permissions
+        mkdir -p public/audios public/models emlinh_mng/instance 2>/dev/null || true
+        mkdir -p emlinh-remotion/out emlinh-remotion/public/audios 2>/dev/null || true
+        chmod -R 755 public/ emlinh_mng/instance/ emlinh-remotion/out/ emlinh-remotion/public/audios/ 2>/dev/null || true
+        
+        echo "✅ Final setup completed for direct host execution"
 
   notification:
     runs-on: self-hosted
@@ -372,40 +467,78 @@ jobs:
     if: always()
     
     steps:
+    - name: Application status check
+      run: |
+        echo "📊 Final application status check..."
+        
+        if [ -f "${{ github.workspace }}/flask.pid" ]; then
+          if kill -0 $(cat ${{ github.workspace }}/flask.pid) 2>/dev/null; then
+            echo "✅ Flask application is running"
+            curl -s http://localhost:5000/health >/dev/null && echo "✅ Health check passed"
+          else
+            echo "⚠️ Flask application PID file exists but process is not running"
+          fi
+        else
+          echo "⚠️ Flask PID file not found"
+        fi
+        
     - name: Final workspace cleanup
       run: |
-        echo "🧹 Final workspace cleanup với enhanced permission handling..."
+        echo "🧹 Final workspace cleanup for host execution..."
         
-        # Enhanced final cleanup strategy
+        # Clean up temporary files but keep running applications
         sudo bash -c "
-          echo 'Stopping all containers and cleaning Docker...'
-          docker compose down --remove-orphans --volumes 2>/dev/null || true
-          docker system prune -af --volumes 2>/dev/null || true
+          echo 'Cleaning temporary files...'
+          rm -rf '${{ github.workspace }}/public/audios/*' '${{ github.workspace }}/public/models/*' 2>/dev/null || true
+          rm -rf '${{ github.workspace }}/emlinh-remotion/out/*' '${{ github.workspace }}/emlinh-remotion/public/audios/*' 2>/dev/null || true
           
-          echo 'Comprehensive workspace permission fix...'
-          if [ -d '${{ github.workspace }}' ]; then
-            chown -R $USER:$USER '${{ github.workspace }}' 2>/dev/null || echo 'Warning: Failed to change workspace ownership'
-            chmod -R 755 '${{ github.workspace }}' 2>/dev/null || echo 'Warning: Failed to change workspace permissions'
-            
-            # Remove problematic directories completely
-            rm -rf '${{ github.workspace }}/public/audios' '${{ github.workspace }}/public/models' '${{ github.workspace }}/emlinh_mng/instance' '${{ github.workspace }}/emlinh-remotion/out' '${{ github.workspace }}/emlinh-remotion/public/audios' 2>/dev/null || true
-          fi
+          echo 'Ensuring proper permissions...'
+          chown -R $USER:$USER '${{ github.workspace }}' 2>/dev/null || echo 'Warning: Some ownership changes failed'
+          chmod -R 755 '${{ github.workspace }}' 2>/dev/null || echo 'Warning: Some permission changes failed'
           
-          echo 'Enhanced final cleanup commands completed'
+          echo 'Recreating directories...'
+          mkdir -p '${{ github.workspace }}/public/audios' '${{ github.workspace }}/public/models' '${{ github.workspace }}/emlinh_mng/instance' 2>/dev/null || true
+          mkdir -p '${{ github.workspace }}/emlinh-remotion/out' '${{ github.workspace }}/emlinh-remotion/public/audios' 2>/dev/null || true
+          chmod -R 755 '${{ github.workspace }}/public/' '${{ github.workspace }}/emlinh_mng/instance/' '${{ github.workspace }}/emlinh-remotion/out/' '${{ github.workspace }}/emlinh-remotion/public/audios/' 2>/dev/null || true
+          
+          echo 'Cleanup completed successfully'
         " || {
-          echo "⚠️ Enhanced cleanup completed with some warnings (expected)"
+          echo "⚠️ Some cleanup operations failed, but continuing..."
         }
         
-        echo "✅ Enhanced final cleanup completed"
+        echo "✅ Final cleanup completed for host execution"
         
     - name: Notify deployment status
       run: |
+        echo "📢 Deployment Status Notification (Direct Host Execution)"
+        echo "=================================================="
+        
         if [ "${{ needs.deploy.result }}" == "success" ]; then
           echo "🎉 Deployment thành công!"
-          echo "✅ Service emlinh_mng và emlinh-remotion đã được deploy"
+          echo "✅ Ứng dụng emlinh_mng đã được deploy trực tiếp trên host"
+          echo "✅ Ứng dụng emlinh-remotion đã được setup trên host"
           echo "🔗 App URL: http://localhost:5000"
+          echo "📋 Deployment Mode: Direct Host Execution (No Docker)"
+          echo ""
+          echo "🛠️  Management Commands:"
+          echo "   Start:  ./start_app.sh"
+          echo "   Stop:   ./stop_app.sh" 
+          echo "   Status: ./status_app.sh"
+          echo ""
+          echo "📁 Application Structure:"
+          echo "   - Flask App: Running on port 5000 with Gunicorn"
+          echo "   - Static Files: Served directly from filesystem"
+          echo "   - Logs: Available in emlinh_mng/flask.log"
+          echo "   - PID File: flask.pid for process management"
         else
           echo "❌ Deployment thất bại!"
           echo "🔍 Kiểm tra logs để xem chi tiết lỗi"
+          echo "📋 Mode: Direct Host Execution (No Docker Required)"
+          echo ""
+          echo "🚨 Troubleshooting Steps:"
+          echo "   1. Check application logs: cat emlinh_mng/flask.log"
+          echo "   2. Verify Python dependencies: pip list"
+          echo "   3. Check port availability: netstat -tulpn | grep 5000"
+          echo "   4. Test manual startup: cd emlinh_mng && python src/app/run.py"
           exit 1
         fi
