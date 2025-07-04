@@ -1,4 +1,4 @@
-name: Facebook Service Tests
+name: Facebook Service Tests (Direct Host Execution)
 
 on:
   push:
@@ -18,12 +18,14 @@ on:
 
 env:
   # Test environment variables - không dùng real tokens
+  # Direct host execution configuration (no Docker required)
   FACEBOOK_ACCESS_TOKEN: test_token_for_ci_cd_pipeline
   FACEBOOK_API_VERSION: v18.0
+  PYTHON_VERSION: '3.10'
 
 jobs:
   facebook-service-tests:
-    runs-on: self-hosted
+    runs-on: self-hosted  # Direct host execution (no Docker containers)
     
     steps:
     - name: 📥 Checkout code
@@ -31,10 +33,10 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: 🐍 Set up Python
+    - name: 🐍 Set up Python environment for direct host execution
       uses: actions/setup-python@v4
       with:
-        python-version: '3.10'
+        python-version: ${{ env.PYTHON_VERSION }}
 
     - name: 📦 Cache Python dependencies
       uses: actions/cache@v3
@@ -112,17 +114,17 @@ jobs:
         echo "- Service factory functions and utilities" >> $GITHUB_STEP_SUMMARY
 
   code-quality:
-    runs-on: self-hosted
+    runs-on: self-hosted  # Direct host execution (no Docker containers)
     needs: facebook-service-tests
     
     steps:
     - name: 📥 Checkout code
       uses: actions/checkout@v4
 
-    - name: 🐍 Set up Python
+    - name: 🐍 Set up Python environment for code quality checks
       uses: actions/setup-python@v4
       with:
-        python-version: '3.10'
+        python-version: ${{ env.PYTHON_VERSION }}
 
     - name: 📦 Install linting tools
       run: |
@@ -149,17 +151,17 @@ jobs:
         mypy src/services/facebook_service.py --ignore-missing-imports || echo "⚠️ Type checking issues found"
 
   security-scan:
-    runs-on: self-hosted
+    runs-on: self-hosted  # Direct host execution (no Docker containers)
     needs: facebook-service-tests
     
     steps:
     - name: 📥 Checkout code
       uses: actions/checkout@v4
 
-    - name: 🐍 Set up Python
+    - name: 🐍 Set up Python environment for security scanning
       uses: actions/setup-python@v4
       with:
-        python-version: '3.10'
+        python-version: ${{ env.PYTHON_VERSION }}
 
     - name: 🛡️ Install Security Scanner
       run: |
@@ -176,14 +178,14 @@ jobs:
         safety check --json || echo "⚠️ Vulnerable dependencies detected"
 
   success-notification:
-    runs-on: self-hosted
+    runs-on: self-hosted  # Direct host execution (no Docker containers)
     needs: [facebook-service-tests, code-quality, security-scan]
     if: success()
     
     steps:
-    - name: 🎉 Success Notification
+    - name: 🎉 Success Notification for Direct Host Execution
       run: |
-        echo "🎊 === FACEBOOK SERVICE CI/CD SUCCESS === 🎊"
+        echo "🎊 === FACEBOOK SERVICE CI/CD SUCCESS (Direct Host Execution) === 🎊"
         echo ""
         echo "✅ All Facebook Service tests passed!"
         echo "✅ Code quality checks completed!"  
@@ -191,6 +193,7 @@ jobs:
         echo ""
         echo "🚀 FacebookService is ready for production!"
         echo "📝 PR có thể được merge an toàn."
+        echo "📋 Execution Mode: Direct Host (No Docker Required)"
         echo ""
         echo "📋 Test Summary:"
         echo "   • Unit Tests: ✅ Passed"
@@ -198,4 +201,9 @@ jobs:
         echo "   • Error Handling: ✅ Passed"
         echo "   • Configuration: ✅ Passed"
         echo "   • Code Quality: ✅ Passed"
-        echo "   • Security: ✅ Passed" 
+        echo "   • Security: ✅ Passed"
+        echo ""
+        echo "🛠️  Environment Details:"
+        echo "   • Python Version: ${{ env.PYTHON_VERSION }}"
+        echo "   • Runner: Self-hosted (Direct host execution)"
+        echo "   • Docker: Not used ✅" 
