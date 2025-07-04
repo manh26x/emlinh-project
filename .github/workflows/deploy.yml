@@ -330,7 +330,7 @@ jobs:
         python -c "import sys; sys.path.insert(0, 'src'); from app.app import create_app; from app.models import db; app = create_app(); exec('with app.app_context():\n    db.create_all()\n    print(\"✅ Database initialized\")')" || echo "⚠️ Database initialization completed with warnings"
         
         # Start Flask app with Gunicorn for production
-        nohup gunicorn --bind 0.0.0.0:${{ env.FLASK_PORT }} --workers 2 --timeout 60 --pythonpath src app.app:app > flask.log 2>&1 &
+        nohup gunicorn --bind 0.0.0.0:${{ env.FLASK_PORT }} --workers 2 --timeout 60 wsgi:application > flask.log 2>&1 &
         
         # Store Flask PID for later management
         echo $! > ../flask.pid
@@ -385,7 +385,7 @@ jobs:
         echo '#!/bin/bash' > start_app.sh
         echo 'echo "🚀 Starting EmLinh applications on host..."' >> start_app.sh
         echo 'cd emlinh_mng' >> start_app.sh
-        echo 'nohup gunicorn --bind 0.0.0.0:5000 --workers 2 --timeout 60 --pythonpath src app.app:app > flask.log 2>&1 &' >> start_app.sh
+        echo 'nohup gunicorn --bind 0.0.0.0:5000 --workers 2 --timeout 60 wsgi:application > flask.log 2>&1 &' >> start_app.sh
         echo 'echo $! > ../flask.pid' >> start_app.sh
         echo 'echo "✅ Flask app started (PID: $(cat ../flask.pid))"' >> start_app.sh
         echo 'echo "🎉 Applications started successfully!"' >> start_app.sh
