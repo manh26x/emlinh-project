@@ -2,6 +2,7 @@ import os
 import subprocess
 import tempfile
 import shutil
+import time
 from datetime import datetime
 from typing import Dict, Any, Optional
 import openai
@@ -19,18 +20,36 @@ class TTSService:
         try:
             # Sử dụng method từ Config để tạo directories
             Config.ensure_directories()
+            # Kiểm tra xem audio_dir có write permission không
+            if not os.access(self.audio_dir, os.W_OK):
+                raise PermissionError(f"No write permission to {self.audio_dir}")
         except Exception as e:
             print(f"Warning: Could not create audio directory {self.audio_dir}: {e}")
-            # Fallback to /tmp if main path fails
-            self.audio_dir = '/tmp/emlinh_audio'
-            # Chỉ tạo thư mục temp nếu có quyền
-            try:
-                if os.access('/tmp', os.W_OK):
+            # Fallback to multiple possible locations
+            fallback_dirs = [
+                '/tmp/emlinh_audio',
+                f'/tmp/emlinh_audio_{os.getpid()}',  # Use PID for uniqueness
+                f'/tmp/emlinh_audio_{int(time.time())}',  # Use timestamp for uniqueness
+                os.path.expanduser('~/tmp/emlinh_audio')  # User home directory
+            ]
+            
+            for fallback_dir in fallback_dirs:
+                try:
+                    os.makedirs(fallback_dir, exist_ok=True)
+                    if os.access(fallback_dir, os.W_OK):
+                        self.audio_dir = fallback_dir
+                        print(f"✅ Using fallback audio directory: {self.audio_dir}")
+                        break
+                except (OSError, PermissionError):
+                    continue
+            else:
+                # Nếu tất cả fallback đều fail, sử dụng thư mục hiện tại
+                self.audio_dir = os.path.join(os.getcwd(), 'temp_audio')
+                try:
                     os.makedirs(self.audio_dir, exist_ok=True)
-                else:
-                    print(f"Warning: No write permission to /tmp, audio directory not created")
-            except (OSError, PermissionError) as e:
-                print(f"Warning: Could not create temp audio directory: {e}")
+                    print(f"⚠️ Using current directory fallback: {self.audio_dir}")
+                except:
+                    print(f"❌ Critical: Cannot create any audio directory")
         
         # OpenAI client
         self.client = openai.OpenAI()

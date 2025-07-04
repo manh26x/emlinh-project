@@ -46,16 +46,38 @@ class Config:
             cls.AUDIO_OUTPUT_DIR
         ]
         
+        created_dirs = []
+        failed_dirs = []
+        
         for directory in directories:
-            # Chỉ tạo nếu thư mục parent có thể write
-            parent_dir = os.path.dirname(directory)
-            if os.path.exists(parent_dir) and os.access(parent_dir, os.W_OK):
-                try:
-                    os.makedirs(directory, exist_ok=True)
-                except (OSError, PermissionError) as e:
-                    print(f"Warning: Cannot create directory {directory}: {e}")
+            # Tạo từng thư mục trung gian từ root
+            path_parts = directory.split('/')
+            current_path = ''
+            
+            for part in path_parts:
+                if part:  # Skip empty parts
+                    current_path = os.path.join(current_path, part) if current_path else part
+                    if current_path and not os.path.exists(current_path):
+                        try:
+                            os.makedirs(current_path, exist_ok=True)
+                            if current_path not in created_dirs:
+                                created_dirs.append(current_path)
+                        except (OSError, PermissionError) as e:
+                            if current_path not in failed_dirs:
+                                failed_dirs.append(current_path)
+                                print(f"Info: Skipping directory creation for {current_path} (parent not writable)")
+                            break
+            
+            # Kiểm tra kết quả cuối cùng
+            if os.path.exists(directory) and os.access(directory, os.W_OK):
+                print(f"✅ Directory ready: {directory}")
             else:
-                print(f"Info: Skipping directory creation for {directory} (parent not writable)")
+                print(f"⚠️ Directory not accessible: {directory}")
+        
+        if created_dirs:
+            print(f"✅ Created directories: {', '.join(created_dirs)}")
+        
+        return len(failed_dirs) == 0
     
     # Ollama Embedding Configuration
     OLLAMA_BASE_URL = os.environ.get('OLLAMA_BASE_URL') or 'http://192.168.1.10:11434'
@@ -71,7 +93,11 @@ class Config:
     def init_app(app):
         """Initialize application with this configuration"""
         # Tạo các thư mục cần thiết khi khởi tạo app
-        Config.ensure_directories()
+        success = Config.ensure_directories()
+        if not success:
+            print("⚠️ Some directories could not be created. App may have limited functionality.")
+        else:
+            print("✅ All required directories are ready.")
 
 class DevelopmentConfig(Config):
     """Development configuration"""
