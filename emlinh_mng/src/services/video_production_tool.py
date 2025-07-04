@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 from .video_service import VideoService
 from .tts_service import TTSService
-from src.app.app import db
+from src.app.extensions import db
 from src.app.models import Video
 from src.app.config import Config
 

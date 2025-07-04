@@ -14,7 +14,7 @@ import json
 
 from .video_service import VideoService
 from .tts_service import TTSService
-from src.app.app import db
+from src.app.extensions import db
 from src.app.models import Video
 from src.utils.video_utils import VideoUtils
 from src.utils.tts_utils import TTSUtils

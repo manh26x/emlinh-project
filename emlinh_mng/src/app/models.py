@@ -1,4 +1,4 @@
-from src.app.app import db
+from src.app.extensions import db
 from datetime import datetime
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy import Text

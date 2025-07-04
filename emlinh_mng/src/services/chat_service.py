@@ -3,7 +3,8 @@ import logging
 from datetime import datetime
 from typing import Dict, List, Optional
 from flask import current_app
-from ..app.models import Chat, Idea, Vector, generate_session_id, db
+from ..app.models import Chat, Idea, Vector, generate_session_id
+from ..app.extensions import db
 from .embedding_service import get_embedding_service
 from .flow_service import flow_service
 from .logic.response_generator import ResponseGenerator

@@ -3,7 +3,8 @@
 Script để tạo bảng videos trong database
 """
 
-from src.app.app import create_app, db
+from src.app.app import create_app
+from src.app.extensions import db
 from src.app.models import Video, Chat, Idea, Vector, User
 
 def create_tables():

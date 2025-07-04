@@ -1,14 +1,7 @@
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-from flask_wtf.csrf import CSRFProtect
-from flask_socketio import SocketIO
 from src.app.config import config
+from src.app.extensions import db, csrf, socketio
 import os
-
-# Initialize extensions
-db = SQLAlchemy()
-csrf = CSRFProtect()
-socketio = SocketIO(cors_allowed_origins="*")
 
 def create_app(config_name=None):
     """Application factory pattern"""

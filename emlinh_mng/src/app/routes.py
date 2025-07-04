@@ -1,5 +1,5 @@
 from flask import render_template, request, jsonify, session, send_file, abort
-from src.app.app import db, csrf
+from src.app.extensions import db, csrf
 from src.services.flow_service import flow_service
 from src.services.chat_service import get_chat_service
 from src.services.video_service import get_video_service
