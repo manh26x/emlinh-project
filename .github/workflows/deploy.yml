@@ -147,13 +147,7 @@ jobs:
         EOF
         
         # Test app import and basic startup
-        timeout 30 python -c "
-import sys
-sys.path.insert(0, 'src')
-from app.app import create_app
-app = create_app()
-print('✅ Flask app can be created successfully')
-" || echo "⚠️ Flask startup test completed with warnings"
+        timeout 30 python -c "import sys; sys.path.insert(0, 'src'); from app.app import create_app; app = create_app(); print('✅ Flask app can be created successfully')" || echo "⚠️ Flask startup test completed with warnings"
         
         rm -f .env.test test.db
         echo "✅ Flask application startup test completed"
@@ -333,16 +327,7 @@ print('✅ Flask app can be created successfully')
         cd emlinh_mng
         
         # Initialize database if needed
-        python -c "
-import sys
-sys.path.insert(0, 'src')
-from app.app import create_app
-from app.models import db
-app = create_app()
-with app.app_context():
-    db.create_all()
-    print('✅ Database initialized')
-" || echo "⚠️ Database initialization completed with warnings"
+        python -c "import sys; sys.path.insert(0, 'src'); from app.app import create_app; from app.models import db; app = create_app(); exec('with app.app_context():\n    db.create_all()\n    print(\"✅ Database initialized\")')" || echo "⚠️ Database initialization completed with warnings"
         
         # Start Flask app with Gunicorn for production
         nohup gunicorn --bind 0.0.0.0:${{ env.FLASK_PORT }} --workers 2 --timeout 60 --pythonpath src app.app:app > flask.log 2>&1 &
@@ -397,48 +382,36 @@ with app.app_context():
         echo "📜 Creating application management scripts for host execution..."
         
         # Create start script
-        cat > start_app.sh << 'EOF'
-#!/bin/bash
-echo "🚀 Starting EmLinh applications on host..."
-
-cd emlinh_mng
-nohup gunicorn --bind 0.0.0.0:5000 --workers 2 --timeout 60 --pythonpath src app.app:app > flask.log 2>&1 &
-echo $! > ../flask.pid
-echo "✅ Flask app started (PID: $(cat ../flask.pid))"
-
-echo "🎉 Applications started successfully!"
-EOF
-
+        echo '#!/bin/bash' > start_app.sh
+        echo 'echo "🚀 Starting EmLinh applications on host..."' >> start_app.sh
+        echo 'cd emlinh_mng' >> start_app.sh
+        echo 'nohup gunicorn --bind 0.0.0.0:5000 --workers 2 --timeout 60 --pythonpath src app.app:app > flask.log 2>&1 &' >> start_app.sh
+        echo 'echo $! > ../flask.pid' >> start_app.sh
+        echo 'echo "✅ Flask app started (PID: $(cat ../flask.pid))"' >> start_app.sh
+        echo 'echo "🎉 Applications started successfully!"' >> start_app.sh
+        
         # Create stop script
-        cat > stop_app.sh << 'EOF'
-#!/bin/bash
-echo "🛑 Stopping EmLinh applications..."
-
-if [ -f "flask.pid" ]; then
-  kill $(cat flask.pid) 2>/dev/null || true
-  rm -f flask.pid
-  echo "✅ Flask app stopped"
-fi
-
-pkill -f "gunicorn" 2>/dev/null || true
-pkill -f "python.*app.py" 2>/dev/null || true
-
-echo "✅ All applications stopped"
-EOF
-
+        echo '#!/bin/bash' > stop_app.sh
+        echo 'echo "🛑 Stopping EmLinh applications..."' >> stop_app.sh
+        echo 'if [ -f "flask.pid" ]; then' >> stop_app.sh
+        echo '  kill $(cat flask.pid) 2>/dev/null || true' >> stop_app.sh
+        echo '  rm -f flask.pid' >> stop_app.sh
+        echo '  echo "✅ Flask app stopped"' >> stop_app.sh
+        echo 'fi' >> stop_app.sh
+        echo 'pkill -f "gunicorn" 2>/dev/null || true' >> stop_app.sh
+        echo 'pkill -f "python.*app.py" 2>/dev/null || true' >> stop_app.sh
+        echo 'echo "✅ All applications stopped"' >> stop_app.sh
+        
         # Create status script
-        cat > status_app.sh << 'EOF'
-#!/bin/bash
-echo "📊 Application Status:"
-
-if [ -f "flask.pid" ] && kill -0 $(cat flask.pid) 2>/dev/null; then
-  echo "✅ Flask app is running (PID: $(cat flask.pid))"
-  curl -s http://localhost:5000/health && echo " - Health check passed"
-else
-  echo "❌ Flask app is not running"
-fi
-EOF
-
+        echo '#!/bin/bash' > status_app.sh
+        echo 'echo "📊 Application Status:"' >> status_app.sh
+        echo 'if [ -f "flask.pid" ] && kill -0 $(cat flask.pid) 2>/dev/null; then' >> status_app.sh
+        echo '  echo "✅ Flask app is running (PID: $(cat flask.pid))"' >> status_app.sh
+        echo '  curl -s http://localhost:5000/health && echo " - Health check passed"' >> status_app.sh
+        echo 'else' >> status_app.sh
+        echo '  echo "❌ Flask app is not running"' >> status_app.sh
+        echo 'fi' >> status_app.sh
+        
         chmod +x start_app.sh stop_app.sh status_app.sh
         echo "✅ Management scripts created"
 
