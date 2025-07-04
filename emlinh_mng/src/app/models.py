@@ -1,7 +1,6 @@
 from src.app.extensions import db
 from datetime import datetime
-from sqlalchemy.dialects.postgresql import ARRAY
-from sqlalchemy import Text
+from sqlalchemy import Text, JSON
 import uuid
 
 class User(db.Model):
@@ -125,7 +124,7 @@ class Idea(db.Model):
     priority = db.Column(db.Integer, default=3, index=True)  # 1: High, 2: Medium, 3: Low
     target_audience = db.Column(db.Text)
     estimated_duration = db.Column(db.Integer)  # Thời lượng ước tính (phút)
-    tags = db.Column(ARRAY(db.String))  # Mảng các tag
+    tags = db.Column(JSON)  # Mảng các tag (stored as JSON)
     related_chat_id = db.Column(db.Integer, db.ForeignKey('chats.id'))
     scheduled_date = db.Column(db.Date, index=True)
     notes = db.Column(db.Text)
@@ -167,7 +166,7 @@ class Vector(db.Model):
     content_id = db.Column(db.Integer, index=True)  # ID tham chiếu đến nội dung gốc
     content_type = db.Column(db.String(50), nullable=False, index=True)  # 'chat', 'idea', 'plan'
     content_text = db.Column(db.Text, nullable=False)  # Nội dung text gốc
-    embedding = db.Column(ARRAY(db.Float))  # Vector embedding as array of floats
+    embedding = db.Column(JSON)  # Vector embedding as array of floats (stored as JSON)
     meta_data = db.Column(db.JSON)  # Thông tin bổ sung dạng JSON (renamed from metadata)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

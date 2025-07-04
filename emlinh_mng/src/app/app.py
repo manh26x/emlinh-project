@@ -21,14 +21,16 @@ def create_app(config_name=None):
     csrf.init_app(app)
     socketio.init_app(app)
     
-    # Create database tables
+    # Import models first, then create database tables
+    import src.app.models
+    
+    # Create database tables after models are imported
     with app.app_context():
         db.create_all()
     
-    # Register routes and import models
+    # Register routes
     from src.app.routes import register_routes
     register_routes(app, socketio)
-    import src.app.models
     
     # Register SocketIO events
     register_socketio_events()

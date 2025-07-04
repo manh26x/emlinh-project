@@ -417,8 +417,8 @@ jobs:
             exit(1)
         "
         
-        # Test database connection
-        echo "🔍 Testing database connection..."
+        # Test database connection using improved method
+        echo "🔍 Testing database connection with comprehensive test..."
         
         # Set environment variables for testing
         export DATABASE_URL="sqlite:///test_deployment.db"
@@ -428,46 +428,77 @@ jobs:
         python -c "
         import sys
         import os
-        sys.path.insert(0, 'src')
+        
+        # Set up path correctly
+        sys.path.insert(0, '.')
         
         # Ensure environment variables are set
-        os.environ.setdefault('DATABASE_URL', 'sqlite:///test_deployment.db')
-        os.environ.setdefault('SECRET_KEY', 'test-secret-key-for-deployment')
-        os.environ.setdefault('FLASK_ENV', 'production')
+        os.environ['DATABASE_URL'] = 'sqlite:///test_deployment.db'
+        os.environ['SECRET_KEY'] = 'test-secret-key-for-deployment'  
+        os.environ['FLASK_ENV'] = 'production'
         
         try:
-            from app.app import create_app
-            from app.extensions import db
-            print('📋 Creating Flask app...')
-            app, socketio = create_app()
-            print('📋 Flask app created successfully')
+            print('📋 Testing extensions import...')
+            from src.app.extensions import db, csrf, socketio
+            print('✅ Extensions import successful')
+            
+            print('📋 Testing models import...')
+            from src.app.models import Chat, Video, Idea, Vector
+            print('✅ Models import successful')
+            
+            print('📋 Creating minimal Flask app...')
+            from flask import Flask
+            from src.app.config import config
+            
+            app = Flask(__name__, 
+                        template_folder='../../templates',
+                        static_folder='../../static')
+            
+            # Load configuration
+            config_name = os.environ.get('FLASK_ENV', 'default')
+            app.config.from_object(config[config_name])
+            config[config_name].init_app(app)
+            
+            # Initialize extensions
+            db.init_app(app)
+            csrf.init_app(app)
+            socketio.init_app(app)
+            print('✅ Flask app created successfully')
             
             with app.app_context():
-                print('📋 Initializing database...')
+                print('📋 Creating database tables...')
                 db.create_all()
-                print('✅ Database connection and initialization successful')
+                print('✅ Database tables created successfully')
                 
-                # Test a simple query
+                # Test database query
                 result = db.session.execute(db.text('SELECT 1')).scalar()
                 if result == 1:
                     print('✅ Database query test passed')
                 else:
                     print('⚠️ Database query test failed')
+                
+                # Test record creation
+                test_chat = Chat(
+                    session_id='deployment-test',
+                    user_message='Deployment test message',
+                    ai_response='Deployment test response',
+                    message_type='test'
+                )
+                db.session.add(test_chat)
+                db.session.commit()
+                
+                # Verify record
+                retrieved = Chat.query.filter_by(session_id='deployment-test').first()
+                if retrieved:
+                    print('✅ Record creation and retrieval test passed')
+                else:
+                    print('⚠️ Record test failed')
                     
         except Exception as e:
             print(f'❌ Database test failed: {e}')
             print('📋 Full traceback:')
             import traceback
             traceback.print_exc()
-            
-            # Try basic import test
-            print('📋 Testing basic imports...')
-            try:
-                from app.extensions import db as test_db
-                print('✅ Extensions import successful')
-            except Exception as e2:
-                print(f'❌ Extensions import failed: {e2}')
-            
             exit(1)
         "
         
