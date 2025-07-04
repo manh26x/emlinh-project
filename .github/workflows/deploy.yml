@@ -363,39 +363,230 @@ jobs:
         sleep 5
         echo "✅ Existing processes stopped"
 
-    - name: Start Flask application on host
+    - name: Test Flask application before starting Gunicorn
       run: |
-        echo "🌶️ Starting Flask application directly on host..."
+        echo "🧪 Testing Flask application before production startup..."
         cd emlinh_mng
         
         # Activate virtual environment
         source venv/bin/activate
         
-        # Initialize database if needed
-        python -c "import sys; sys.path.insert(0, 'src'); from app.app import create_app; from app.models import db; app = create_app(); exec('with app.app_context():\n    db.create_all()\n    print(\"✅ Database initialized\")')" || echo "⚠️ Database initialization completed with warnings"
+        # Test WSGI import
+        echo "🔍 Testing WSGI import..."
+        python -c "
+        import sys
+        sys.path.insert(0, 'src')
+        try:
+            from wsgi import application
+            print('✅ WSGI import successful')
+        except Exception as e:
+            print(f'❌ WSGI import failed: {e}')
+            exit(1)
+        "
         
-        # Start Flask app with Gunicorn for production
-        nohup gunicorn --bind 0.0.0.0:${{ env.FLASK_PORT }} --workers 2 --timeout 60 wsgi:application > flask.log 2>&1 &
+        # Test Flask app creation
+        echo "🔍 Testing Flask app creation..."
+        python -c "
+        import sys
+        sys.path.insert(0, 'src')
+        try:
+            from app.app import create_app
+            app, socketio = create_app()
+            print('✅ Flask app creation successful')
+            print(f'✅ App config: {app.config.get(\"FLASK_ENV\", \"default\")}')
+        except Exception as e:
+            print(f'❌ Flask app creation failed: {e}')
+            import traceback
+            traceback.print_exc()
+            exit(1)
+        "
+        
+        # Test database connection
+        echo "🔍 Testing database connection..."
+        python -c "
+        import sys
+        sys.path.insert(0, 'src')
+        try:
+            from app.app import create_app
+            from app.models import db
+            app, socketio = create_app()
+            with app.app_context():
+                db.create_all()
+                print('✅ Database connection and initialization successful')
+        except Exception as e:
+            print(f'❌ Database test failed: {e}')
+            import traceback
+            traceback.print_exc()
+            exit(1)
+        "
+        
+        echo "✅ All Flask application tests passed"
+
+    - name: Start Flask application on host
+      run: |
+        echo "🌶️ Starting Flask application directly on host with enhanced error handling..."
+        cd emlinh_mng
+        
+        # Activate virtual environment
+        source venv/bin/activate
+        
+        # Create enhanced gunicorn configuration
+        cat > gunicorn.conf.py << 'EOF'
+        import multiprocessing
+        import os
+
+        # Server socket
+        bind = "0.0.0.0:5000"
+        backlog = 2048
+
+        # Worker processes
+        workers = 2
+        worker_class = "sync"
+        worker_connections = 1000
+        timeout = 60
+        keepalive = 30
+        max_requests = 1000
+        max_requests_jitter = 50
+
+        # Restart workers after this many requests, to help prevent memory leaks
+        preload_app = True
+
+        # Logging
+        accesslog = "access.log"
+        errorlog = "error.log"
+        loglevel = "info"
+        access_log_format = '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s"'
+
+        # Process naming
+        proc_name = "emlinh_flask_app"
+
+        # Server mechanics
+        pidfile = "gunicorn.pid"
+        user = None
+        group = None
+        tmp_upload_dir = None
+
+        # SSL
+        keyfile = None
+        certfile = None
+        EOF
+        
+        # Test gunicorn configuration
+        echo "🔍 Testing Gunicorn configuration..."
+        gunicorn --check-config -c gunicorn.conf.py wsgi:application || {
+          echo "❌ Gunicorn configuration test failed"
+          exit 1
+        }
+        
+        # Start Flask app with enhanced Gunicorn configuration
+        echo "🚀 Starting Gunicorn with enhanced configuration..."
+        nohup gunicorn -c gunicorn.conf.py wsgi:application > flask.log 2>&1 &
         
         # Store Flask PID for later management
         echo $! > ../flask.pid
         
         echo "✅ Flask application started on host (PID: $(cat ../flask.pid))"
+        
+        # Wait a moment and check if process is still running
+        sleep 5
+        if kill -0 $(cat ../flask.pid) 2>/dev/null; then
+          echo "✅ Flask process is still running after startup check"
+        else
+          echo "❌ Flask process died shortly after startup"
+          echo "📋 Last 30 lines of flask.log:"
+          tail -30 flask.log || true
+          echo ""
+          echo "📋 Last 30 lines of error.log:"
+          tail -30 error.log || true
+          echo ""
+          echo "📋 Checking for gunicorn processes:"
+          ps aux | grep gunicorn || true
+          echo ""
+          echo "📋 Checking port 5000:"
+          netstat -tulpn | grep 5000 || true
+          echo ""
+          echo "📋 System logs related to Python/Gunicorn:"
+          journalctl -u "*python*" -u "*gunicorn*" --no-pager -n 20 || true
+          exit 1
+        fi
 
     - name: Wait for Flask application to be ready
       run: |
         echo "⏳ Waiting for Flask application to be ready..."
-        timeout 120 bash -c '
-          until curl -f http://localhost:${{ env.FLASK_PORT }}/health >/dev/null 2>&1; do 
-            echo "Waiting for Flask app..."
-            sleep 5
-          done
-        ' && echo "✅ Flask application is ready" || {
-          echo "❌ Flask application failed to start properly"
-          echo "📋 Flask logs:"
-          cat emlinh_mng/flask.log || true
+        
+        # Enhanced health check with better debugging
+        attempts=0
+        max_attempts=24  # 24 attempts * 5 seconds = 2 minutes
+        
+        while [ $attempts -lt $max_attempts ]; do
+          echo "🔍 Health check attempt $((attempts + 1))/$max_attempts..."
+          
+          # Check if process is still running
+          if [ -f "flask.pid" ] && kill -0 $(cat flask.pid) 2>/dev/null; then
+            echo "✅ Flask process is running (PID: $(cat flask.pid))"
+            
+            # Try health check
+            if curl -f -s http://localhost:${{ env.FLASK_PORT }}/health >/dev/null 2>&1; then
+              echo "✅ Flask application is ready and responding to health checks!"
+              break
+            else
+              echo "⚠️ Flask process running but not responding to health check yet..."
+              
+              # Show recent logs for debugging
+              if [ $((attempts % 4)) -eq 0 ]; then
+                echo "📋 Recent logs (last 10 lines):"
+                tail -10 emlinh_mng/flask.log 2>/dev/null || echo "No flask.log found"
+                echo "📋 Recent error logs (last 5 lines):"
+                tail -5 emlinh_mng/error.log 2>/dev/null || echo "No error.log found"
+              fi
+            fi
+          else
+            echo "❌ Flask process is not running!"
+            echo "📋 Full flask.log:"
+            cat emlinh_mng/flask.log 2>/dev/null || echo "No flask.log found"
+            echo "📋 Full error.log:"
+            cat emlinh_mng/error.log 2>/dev/null || echo "No error.log found"
+            exit 1
+          fi
+          
+          attempts=$((attempts + 1))
+          sleep 5
+        done
+        
+        # Final check
+        if [ $attempts -eq $max_attempts ]; then
+          echo "❌ Flask application failed to start properly after $max_attempts attempts"
+          echo ""
+          echo "📋 Final diagnostic information:"
+          echo "Process status:"
+          if [ -f "flask.pid" ]; then
+            if kill -0 $(cat flask.pid) 2>/dev/null; then
+              echo "  ✅ Process is running (PID: $(cat flask.pid))"
+            else
+              echo "  ❌ Process is not running"
+            fi
+          else
+            echo "  ❌ PID file not found"
+          fi
+          
+          echo ""
+          echo "Port status:"
+          netstat -tulpn | grep 5000 || echo "  ❌ No process listening on port 5000"
+          
+          echo ""
+          echo "Last 30 lines of flask.log:"
+          tail -30 emlinh_mng/flask.log 2>/dev/null || echo "  ❌ No flask.log found"
+          
+          echo ""
+          echo "Last 30 lines of error.log:"
+          tail -30 emlinh_mng/error.log 2>/dev/null || echo "  ❌ No error.log found"
+          
+          echo ""
+          echo "Gunicorn processes:"
+          ps aux | grep gunicorn || echo "  ❌ No gunicorn processes found"
+          
           exit 1
-        }
+        fi
 
     - name: Verify deployment health
       run: |
@@ -426,15 +617,76 @@ jobs:
       run: |
         echo "📜 Creating application management scripts for host execution..."
         
-        # Create start script
+        # Create enhanced start script
         echo '#!/bin/bash' > start_app.sh
         echo 'echo "🚀 Starting EmLinh applications on host..."' >> start_app.sh
+        echo 'echo "📅 Start time: $(date)"' >> start_app.sh
+        echo '' >> start_app.sh
+        echo '# Pre-flight checks' >> start_app.sh
+        echo 'echo "🔍 Running pre-flight checks..."' >> start_app.sh
         echo 'cd emlinh_mng' >> start_app.sh
+        echo '' >> start_app.sh
+        echo '# Check virtual environment' >> start_app.sh
+        echo 'if [ ! -d "venv" ]; then' >> start_app.sh
+        echo '  echo "❌ Virtual environment not found"' >> start_app.sh
+        echo '  exit 1' >> start_app.sh
+        echo 'fi' >> start_app.sh
+        echo '' >> start_app.sh
+        echo '# Activate virtual environment' >> start_app.sh
         echo 'source venv/bin/activate' >> start_app.sh
-        echo 'nohup gunicorn --bind 0.0.0.0:5000 --workers 2 --timeout 60 wsgi:application > flask.log 2>&1 &' >> start_app.sh
+        echo '' >> start_app.sh
+        echo '# Test WSGI import' >> start_app.sh
+        echo 'echo "🔍 Testing WSGI import..."' >> start_app.sh
+        echo 'python -c "import sys; sys.path.insert(0, '\''src'\''); from wsgi import application; print('\''✅ WSGI import successful'\'')" || {' >> start_app.sh
+        echo '  echo "❌ WSGI import failed"' >> start_app.sh
+        echo '  exit 1' >> start_app.sh
+        echo '}' >> start_app.sh
+        echo '' >> start_app.sh
+        echo '# Stop any existing processes' >> start_app.sh
+        echo 'echo "🛑 Stopping existing processes..."' >> start_app.sh
+        echo 'pkill -f "gunicorn" 2>/dev/null || true' >> start_app.sh
+        echo 'sleep 2' >> start_app.sh
+        echo '' >> start_app.sh
+        echo '# Start Gunicorn with enhanced configuration' >> start_app.sh
+        echo 'echo "🚀 Starting Gunicorn..."' >> start_app.sh
+        echo 'if [ -f "gunicorn.conf.py" ]; then' >> start_app.sh
+        echo '  nohup gunicorn -c gunicorn.conf.py wsgi:application > flask.log 2>&1 &' >> start_app.sh
+        echo 'else' >> start_app.sh
+        echo '  nohup gunicorn --bind 0.0.0.0:5000 --workers 2 --timeout 60 --log-level info wsgi:application > flask.log 2>&1 &' >> start_app.sh
+        echo 'fi' >> start_app.sh
+        echo '' >> start_app.sh
+        echo '# Store Flask PID' >> start_app.sh
         echo 'echo $! > ../flask.pid' >> start_app.sh
         echo 'echo "✅ Flask app started (PID: $(cat ../flask.pid))"' >> start_app.sh
-        echo 'echo "🎉 Applications started successfully!"' >> start_app.sh
+        echo '' >> start_app.sh
+        echo '# Wait and verify startup' >> start_app.sh
+        echo 'echo "⏳ Waiting for app to be ready..."' >> start_app.sh
+        echo 'sleep 5' >> start_app.sh
+        echo '' >> start_app.sh
+        echo 'if kill -0 $(cat ../flask.pid) 2>/dev/null; then' >> start_app.sh
+        echo '  echo "✅ Process is running"' >> start_app.sh
+        echo '  ' >> start_app.sh
+        echo '  # Test health endpoint' >> start_app.sh
+        echo '  for i in {1..12}; do' >> start_app.sh
+        echo '    if curl -f -s http://localhost:5000/health >/dev/null 2>&1; then' >> start_app.sh
+        echo '      echo "✅ Health check passed"' >> start_app.sh
+        echo '      echo "🎉 Applications started successfully!"' >> start_app.sh
+        echo '      echo "🔗 App URL: http://localhost:5000"' >> start_app.sh
+        echo '      exit 0' >> start_app.sh
+        echo '    fi' >> start_app.sh
+        echo '    echo "⏳ Waiting for health check... ($i/12)"' >> start_app.sh
+        echo '    sleep 5' >> start_app.sh
+        echo '  done' >> start_app.sh
+        echo '  ' >> start_app.sh
+        echo '  echo "⚠️ App started but health check failed"' >> start_app.sh
+        echo '  echo "📋 Recent logs:"' >> start_app.sh
+        echo '  tail -10 flask.log' >> start_app.sh
+        echo 'else' >> start_app.sh
+        echo '  echo "❌ Process died after startup"' >> start_app.sh
+        echo '  echo "📋 Logs:"' >> start_app.sh
+        echo '  cat flask.log' >> start_app.sh
+        echo '  exit 1' >> start_app.sh
+        echo 'fi' >> start_app.sh
         
         # Create stop script
         echo '#!/bin/bash' > stop_app.sh
@@ -448,18 +700,100 @@ jobs:
         echo 'pkill -f "python.*app.py" 2>/dev/null || true' >> stop_app.sh
         echo 'echo "✅ All applications stopped"' >> stop_app.sh
         
-        # Create status script
+        # Create enhanced status script
         echo '#!/bin/bash' > status_app.sh
-        echo 'echo "📊 Application Status:"' >> status_app.sh
-        echo 'if [ -f "flask.pid" ] && kill -0 $(cat flask.pid) 2>/dev/null; then' >> status_app.sh
-        echo '  echo "✅ Flask app is running (PID: $(cat flask.pid))"' >> status_app.sh
-        echo '  curl -s http://localhost:5000/health && echo " - Health check passed"' >> status_app.sh
+        echo 'echo "📊 === APPLICATION STATUS === 📊"' >> status_app.sh
+        echo 'echo "📅 Check time: $(date)"' >> status_app.sh
+        echo 'echo ""' >> status_app.sh
+        echo '' >> status_app.sh
+        echo '# Check Flask process' >> status_app.sh
+        echo 'echo "🔍 Flask Application Status:"' >> status_app.sh
+        echo 'if [ -f "flask.pid" ]; then' >> status_app.sh
+        echo '  PID=$(cat flask.pid)' >> status_app.sh
+        echo '  if kill -0 $PID 2>/dev/null; then' >> status_app.sh
+        echo '    echo "  ✅ Flask app is running (PID: $PID)"' >> status_app.sh
+        echo '    echo "  📋 Process details:"' >> status_app.sh
+        echo '    ps aux | grep $PID | grep -v grep' >> status_app.sh
+        echo '  else' >> status_app.sh
+        echo '    echo "  ❌ Flask app is not running (PID file exists but process dead)"' >> status_app.sh
+        echo '  fi' >> status_app.sh
         echo 'else' >> status_app.sh
-        echo '  echo "❌ Flask app is not running"' >> status_app.sh
+        echo '  echo "  ❌ Flask app is not running (no PID file)"' >> status_app.sh
+        echo 'fi' >> status_app.sh
+        echo 'echo ""' >> status_app.sh
+        echo '' >> status_app.sh
+        echo '# Check Gunicorn processes' >> status_app.sh
+        echo 'echo "🔍 Gunicorn Processes:"' >> status_app.sh
+        echo 'GUNICORN_COUNT=$(pgrep -f gunicorn | wc -l)' >> status_app.sh
+        echo 'if [ $GUNICORN_COUNT -gt 0 ]; then' >> status_app.sh
+        echo '  echo "  ✅ Found $GUNICORN_COUNT Gunicorn processes"' >> status_app.sh
+        echo '  ps aux | grep gunicorn | grep -v grep' >> status_app.sh
+        echo 'else' >> status_app.sh
+        echo '  echo "  ❌ No Gunicorn processes found"' >> status_app.sh
+        echo 'fi' >> status_app.sh
+        echo 'echo ""' >> status_app.sh
+        echo '' >> status_app.sh
+        echo '# Check port 5000' >> status_app.sh
+        echo 'echo "🔍 Port 5000 Status:"' >> status_app.sh
+        echo 'if netstat -tulpn | grep ":5000 " >/dev/null; then' >> status_app.sh
+        echo '  echo "  ✅ Port 5000 is in use"' >> status_app.sh
+        echo '  netstat -tulpn | grep ":5000 "' >> status_app.sh
+        echo 'else' >> status_app.sh
+        echo '  echo "  ❌ Port 5000 is not in use"' >> status_app.sh
+        echo 'fi' >> status_app.sh
+        echo 'echo ""' >> status_app.sh
+        echo '' >> status_app.sh
+        echo '# Health check' >> status_app.sh
+        echo 'echo "🔍 Health Check:"' >> status_app.sh
+        echo 'if curl -f -s http://localhost:5000/health >/dev/null 2>&1; then' >> status_app.sh
+        echo '  echo "  ✅ Health check passed"' >> status_app.sh
+        echo '  echo "  📋 Health response:"' >> status_app.sh
+        echo '  curl -s http://localhost:5000/health | jq . 2>/dev/null || curl -s http://localhost:5000/health' >> status_app.sh
+        echo 'else' >> status_app.sh
+        echo '  echo "  ❌ Health check failed"' >> status_app.sh
+        echo '  echo "  📋 curl details:"' >> status_app.sh
+        echo '  curl -v http://localhost:5000/health 2>&1 | head -10' >> status_app.sh
+        echo 'fi' >> status_app.sh
+        echo 'echo ""' >> status_app.sh
+        echo '' >> status_app.sh
+        echo '# Check logs' >> status_app.sh
+        echo 'echo "🔍 Recent Logs:"' >> status_app.sh
+        echo 'if [ -f "emlinh_mng/flask.log" ]; then' >> status_app.sh
+        echo '  echo "  📋 Last 5 lines of flask.log:"' >> status_app.sh
+        echo '  tail -5 emlinh_mng/flask.log' >> status_app.sh
+        echo 'else' >> status_app.sh
+        echo '  echo "  ⚠️ No flask.log found"' >> status_app.sh
+        echo 'fi' >> status_app.sh
+        echo 'echo ""' >> status_app.sh
+        echo '' >> status_app.sh
+        echo 'if [ -f "emlinh_mng/error.log" ]; then' >> status_app.sh
+        echo '  echo "  📋 Last 5 lines of error.log:"' >> status_app.sh
+        echo '  tail -5 emlinh_mng/error.log' >> status_app.sh
+        echo 'else' >> status_app.sh
+        echo '  echo "  ⚠️ No error.log found"' >> status_app.sh
+        echo 'fi' >> status_app.sh
+        echo 'echo ""' >> status_app.sh
+        echo '' >> status_app.sh
+        echo '# Summary' >> status_app.sh
+        echo 'echo "📊 === SUMMARY === 📊"' >> status_app.sh
+        echo 'if [ -f "flask.pid" ] && kill -0 $(cat flask.pid) 2>/dev/null && curl -f -s http://localhost:5000/health >/dev/null 2>&1; then' >> status_app.sh
+        echo '  echo "🎉 Application is HEALTHY and RUNNING!"' >> status_app.sh
+        echo '  echo "🔗 Access at: http://localhost:5000"' >> status_app.sh
+        echo 'else' >> status_app.sh
+        echo '  echo "⚠️ Application has issues. Check logs and processes above."' >> status_app.sh
+        echo '  echo "💡 Try: ./debug_deployment.sh for detailed diagnostics"' >> status_app.sh
+        echo '  echo "🔄 Try: ./start_app.sh to restart"' >> status_app.sh
         echo 'fi' >> status_app.sh
         
-        chmod +x start_app.sh stop_app.sh status_app.sh
-        echo "✅ Management scripts created"
+        # Copy debug script
+        cp debug_deployment.sh debug_deployment.sh.bak 2>/dev/null || true
+        
+        chmod +x start_app.sh stop_app.sh status_app.sh debug_deployment.sh
+        echo "✅ Management scripts created:"
+        echo "   - start_app.sh: Start the application"
+        echo "   - stop_app.sh: Stop the application"  
+        echo "   - status_app.sh: Check application status"
+        echo "   - debug_deployment.sh: Debug deployment issues"
 
     - name: Final permission and cleanup setup
       run: |
@@ -555,9 +889,11 @@ jobs:
           echo "📋 Mode: Direct Host Execution (No Docker Required)"
           echo ""
           echo "🚨 Troubleshooting Steps:"
-          echo "   1. Check application logs: cat emlinh_mng/flask.log"
-          echo "   2. Verify Python dependencies: pip list"
-          echo "   3. Check port availability: netstat -tulpn | grep 5000"
-          echo "   4. Test manual startup: cd emlinh_mng && python src/app/run.py"
+          echo "   1. Run debug script: ./debug_deployment.sh"
+          echo "   2. Check application logs: cat emlinh_mng/flask.log"
+          echo "   3. Check error logs: cat emlinh_mng/error.log"
+          echo "   4. Check application status: ./status_app.sh"
+          echo "   5. Try manual restart: ./start_app.sh"
+          echo "   6. Test manual startup: cd emlinh_mng && source venv/bin/activate && python src/app/run.py"
           exit 1
         fi
