@@ -7,6 +7,7 @@ import uuid
 class User(db.Model):
     """User model"""
     __tablename__ = 'users'
+    __table_args__ = {'extend_existing': True}
     
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
@@ -31,6 +32,7 @@ class User(db.Model):
 class Chat(db.Model):
     """Chat model for storing conversations with AI"""
     __tablename__ = 'chats'
+    __table_args__ = {'extend_existing': True}
     
     id = db.Column(db.Integer, primary_key=True)
     session_id = db.Column(db.String(255), nullable=False, index=True)
@@ -59,6 +61,7 @@ class Chat(db.Model):
 class Video(db.Model):
     """Video model for storing AI-generated videos"""
     __tablename__ = 'videos'
+    __table_args__ = {'extend_existing': True}
     
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(255), nullable=False)
@@ -111,6 +114,7 @@ class Video(db.Model):
 class Idea(db.Model):
     """Idea model for storing content ideas and plans"""
     __tablename__ = 'ideas'
+    __table_args__ = {'extend_existing': True}
     
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(255), nullable=False)
@@ -157,6 +161,7 @@ class Idea(db.Model):
 class Vector(db.Model):
     """Vector model for storing embeddings"""
     __tablename__ = 'vectors'
+    __table_args__ = {'extend_existing': True}
     
     id = db.Column(db.Integer, primary_key=True)
     content_id = db.Column(db.Integer, index=True)  # ID tham chiếu đến nội dung gốc
