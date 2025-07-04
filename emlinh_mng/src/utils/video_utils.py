@@ -23,6 +23,7 @@ class VideoUtils:
     ) -> str:
         """
         Render video với audio và thông số đã cho sử dụng Remotion
+        Có fallback mechanism nếu Remotion không available
         
         Args:
             audio_file: Đường dẫn file audio
@@ -32,7 +33,7 @@ class VideoUtils:
             topic: Chủ đề video (để tạo tên file)
             
         Returns:
-            str: Đường dẫn file video đã render
+            str: Đường dẫn file video đã render hoặc placeholder
         """
         try:
             # Tạo tên file output
@@ -54,14 +55,25 @@ class VideoUtils:
                     os.makedirs(output_dir, exist_ok=True)
                 else:
                     print(f"Warning: Cannot create output directory {output_dir} - no write permission")
+                    # Fallback to temp directory
+                    output_dir = "/tmp"
+                    output_path = os.path.join(output_dir, output_filename)
             except (OSError, PermissionError) as e:
                 print(f"Warning: Cannot create output directory {output_dir}: {e}")
+                # Fallback to temp directory
+                output_dir = "/tmp"
+                output_path = os.path.join(output_dir, output_filename)
             
             print(f"🎬 Rendering video với Remotion: {output_filename}")
             print(f"   - Audio: {audio_file}")
             print(f"   - Duration: {duration}s")
             print(f"   - Composition: {composition}")
             print(f"   - Background: {background}")
+            
+            # Kiểm tra Remotion availability trước khi render
+            if not VideoUtils._check_remotion_availability(remotion_path):
+                print("⚠️ Remotion not available, creating placeholder video...")
+                return VideoUtils._create_placeholder_video(output_path, duration, topic)
             
             # Chuẩn bị props cho Remotion
             # Lấy tên file audio (không có đường dẫn)
@@ -83,10 +95,95 @@ class VideoUtils:
                 print(f"✅ Video rendered successfully: {output_path}")
                 return output_path
             else:
-                raise Exception("Remotion render failed")
+                print("⚠️ Remotion render failed, creating placeholder video...")
+                return VideoUtils._create_placeholder_video(output_path, duration, topic)
                 
         except Exception as e:
             print(f"❌ Video rendering failed: {str(e)}")
+            print("⚠️ Creating placeholder video as fallback...")
+            
+            # Fallback: create placeholder
+            try:
+                timestamp = time.strftime("%Y%m%d_%H%M%S")
+                safe_topic = topic.replace(" ", "_").replace("/", "_")[:20]
+                output_filename = f"video_{timestamp}_{safe_topic}.mp4"
+                output_path = os.path.join("/tmp", output_filename)
+                return VideoUtils._create_placeholder_video(output_path, duration, topic)
+            except Exception as fallback_error:
+                print(f"❌ Fallback creation failed: {fallback_error}")
+                raise Exception("Both Remotion render and fallback creation failed")
+    
+    @staticmethod
+    def _check_remotion_availability(remotion_path: str) -> bool:
+        """Check if Remotion is available and working"""
+        try:
+            # Check basic requirements
+            if not os.path.exists(remotion_path):
+                print(f"⚠️ Remotion path not found: {remotion_path}")
+                return False
+            
+            package_json = os.path.join(remotion_path, 'package.json')
+            if not os.path.exists(package_json):
+                print(f"⚠️ Package.json not found: {package_json}")
+                return False
+            
+            node_modules = os.path.join(remotion_path, 'node_modules')
+            if not os.path.exists(node_modules):
+                print(f"⚠️ Node modules not found: {node_modules}")
+                return False
+            
+            # Quick npx test with short timeout
+            try:
+                result = subprocess.run(
+                    ["npx", "remotion", "--version"],
+                    cwd=remotion_path,
+                    capture_output=True,
+                    timeout=10
+                )
+                if result.returncode == 0:
+                    print("✅ Remotion CLI available")
+                    return True
+                else:
+                    print(f"⚠️ Remotion CLI test failed: {result.stderr.decode()[:100]}")
+                    return False
+            except Exception as e:
+                print(f"⚠️ Remotion CLI test error: {str(e)}")
+                return False
+            
+        except Exception as e:
+            print(f"⚠️ Remotion availability check failed: {str(e)}")
+            return False
+    
+    @staticmethod
+    def _create_placeholder_video(output_path: str, duration: int, topic: str) -> str:
+        """Create a simple placeholder video when Remotion is not available"""
+        try:
+            print(f"🎥 Creating placeholder video: {output_path}")
+            
+            # Create a simple text file as placeholder for now
+            # In production, this could be replaced with ffmpeg-generated video
+            placeholder_content = f"""
+# Placeholder Video
+Topic: {topic}
+Duration: {duration} seconds
+Created: {time.strftime("%Y-%m-%d %H:%M:%S")}
+
+This is a placeholder because Remotion rendering is not available.
+The actual video would contain animated avatar content.
+"""
+            
+            # Create placeholder file
+            placeholder_path = output_path.replace('.mp4', '_placeholder.txt')
+            with open(placeholder_path, 'w', encoding='utf-8') as f:
+                f.write(placeholder_content)
+            
+            print(f"✅ Placeholder created: {placeholder_path}")
+            print("ℹ️ In production, implement ffmpeg fallback for actual video")
+            
+            return placeholder_path
+            
+        except Exception as e:
+            print(f"❌ Placeholder creation failed: {str(e)}")
             raise
     
     @staticmethod

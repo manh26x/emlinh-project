@@ -417,7 +417,7 @@ QUAN TRỌNG:
     @listen(start_tts_generation)
     def start_video_render(self, tts_data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Start video rendering process
+        Start video rendering process với fallback support
         
         Args:
             tts_data: Data from TTS generation step
@@ -447,7 +447,12 @@ QUAN TRỌNG:
             # Store video file path
             self.state.video_file = video_file
             
-            print(f"✅ Video rendered: {video_file}")
+            # Check if it's a placeholder file
+            if video_file.endswith('_placeholder.txt'):
+                print(f"⚠️ Placeholder video created: {video_file}")
+                print("   Video rendering not available, but flow continues")
+            else:
+                print(f"✅ Video rendered: {video_file}")
             
             return {
                 "video_file": video_file,
@@ -496,7 +501,14 @@ QUAN TRỌNG:
                 if video:
                     video.file_path = self.state.video_file
                     video.file_name = self.state.video_file.split('/')[-1]
-                    video.status = 'completed'
+                    
+                    # Handle placeholder files
+                    if self.state.video_file.endswith('_placeholder.txt'):
+                        video.status = 'placeholder'
+                        video.error_message = 'Video rendering not available - placeholder created'
+                        print("ℹ️ Database updated with placeholder status")
+                    else:
+                        video.status = 'completed'
                     
                     # Update duration với actual duration từ audio
                     if self.state.actual_duration:
