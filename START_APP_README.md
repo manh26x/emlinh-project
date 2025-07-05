@@ -51,6 +51,47 @@
 ./status_app.sh
 ```
 
+### 7. `start_app_daemon.sh` - Daemon cho CI/CD
+- Khởi chạy ứng dụng như daemon thực sự
+- Detach hoàn toàn khỏi CI/CD session
+- **Giải quyết vấn đề process bị kill khi CI/CD kết thúc**
+
+```bash
+./start_app_daemon.sh
+```
+
+### 8. `create_systemd_service.sh` - Setup systemd service
+- Tạo systemd service (giải pháp tốt nhất)
+- Quản lý qua systemctl
+- **Khuyến nghị cho production server**
+
+```bash
+./create_systemd_service.sh
+```
+
+## Giải quyết vấn đề "Process bị dừng khi CI/CD kết thúc":
+
+### 🔴 **Vấn đề**: 
+Manual chạy được, nhưng CI/CD runner chạy xong process bị kill
+
+### ✅ **Giải pháp**:
+
+1. **Systemd Service (Tốt nhất):**
+   ```bash
+   ./create_systemd_service.sh
+   ./start_app_systemd.sh
+   ```
+
+2. **Daemon Script (Khuyến nghị):**
+   ```bash
+   ./start_app_daemon.sh
+   ```
+
+3. **Debug nếu vẫn lỗi:**
+   ```bash
+   ./debug_virtual_env.sh
+   ```
+
 ## Khắc phục lỗi "ModuleNotFoundError: No module named 'flask'":
 
 1. **Chạy debug trước:**
@@ -69,6 +110,9 @@
    ```
 
 ## Lưu ý:
+- **CI/CD**: Sử dụng `start_app_daemon.sh` hoặc systemd
+- **Development**: Sử dụng `start_app_simple.sh`
+- **Production**: Sử dụng systemd service
 - Tất cả scripts sẽ tự động tạo virtual environment nếu chưa có
 - Dependencies sẽ được cài đặt tự động
 - Ứng dụng sẽ chạy trên http://localhost:5000

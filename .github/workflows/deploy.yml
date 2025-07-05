@@ -507,15 +507,50 @@ jobs:
         
         echo "✅ All Flask application tests passed"
 
-    - name: Start Flask application on host
+    - name: Start Flask application as daemon (CI/CD-safe)
       run: |
-        echo "🌶️ Starting Flask application directly on host with enhanced error handling..."
-        cd emlinh_mng
+        echo "🌶️ Starting Flask application as proper daemon for CI/CD..."
         
-        # Activate virtual environment
+        # Try daemon script first (preferred method)
+        if [ -f "start_app_daemon.sh" ]; then
+          echo "🚀 Using daemon script approach..."
+          chmod +x start_app_daemon.sh
+          ./start_app_daemon.sh && {
+            echo "✅ Application started via daemon script"
+            exit 0
+          } || {
+            echo "⚠️ Daemon script failed, trying systemd approach..."
+          }
+        fi
+        
+        # Try systemd if available
+        if command -v systemctl >/dev/null 2>&1; then
+          echo "🔧 Attempting systemd setup..."
+          if [ -f "create_systemd_service.sh" ]; then
+            chmod +x create_systemd_service.sh
+            ./create_systemd_service.sh || {
+              echo "⚠️ Systemd setup failed, using manual daemon approach"
+            }
+            
+            # Try to start via systemd
+            if [ -f "start_app_systemd.sh" ]; then
+              chmod +x start_app_systemd.sh
+              ./start_app_systemd.sh && {
+                echo "✅ Application started via systemd"
+                exit 0
+              } || {
+                echo "⚠️ Systemd start failed, using manual daemon approach"
+              }
+            fi
+          fi
+        fi
+        
+        # Manual daemon approach as fallback
+        echo "🔧 Using manual daemon approach..."
+        cd emlinh_mng
         source venv/bin/activate
         
-        # Create enhanced gunicorn configuration
+        # Create enhanced gunicorn configuration with daemon mode
         cat > gunicorn.conf.py << 'EOF'
         import multiprocessing
         import os
@@ -545,8 +580,9 @@ jobs:
         # Process naming
         proc_name = "emlinh_flask_app"
 
-        # Server mechanics
-        pidfile = "gunicorn.pid"
+        # Server mechanics - DAEMON MODE
+        daemon = True
+        pidfile = "../flask.pid"
         user = None
         group = None
         tmp_upload_dir = None
@@ -556,42 +592,34 @@ jobs:
         certfile = None
         EOF
         
-        # Test gunicorn configuration
-        echo "🔍 Testing Gunicorn configuration..."
+        # Test configuration
+        echo "🔍 Testing Gunicorn daemon configuration..."
         gunicorn --check-config -c gunicorn.conf.py wsgi:application || {
           echo "❌ Gunicorn configuration test failed"
           exit 1
         }
         
-        # Start Flask app with enhanced Gunicorn configuration
-        echo "🚀 Starting Gunicorn with enhanced configuration..."
-        nohup gunicorn -c gunicorn.conf.py wsgi:application > flask.log 2>&1 &
+        # Start as proper daemon with multiple detachment methods
+        echo "🚀 Starting Gunicorn as daemon with CI/CD-safe detachment..."
         
-        # Store Flask PID for later management
-        echo $! > ../flask.pid
+        # Method: Use setsid + daemon flag for complete detachment
+        setsid gunicorn -c gunicorn.conf.py wsgi:application
         
-        echo "✅ Flask application started on host (PID: $(cat ../flask.pid))"
+        # Wait for daemon to start
+        echo "⏳ Waiting for daemon to initialize..."
+        sleep 8
         
-        # Wait a moment and check if process is still running
-        sleep 5
-        if kill -0 $(cat ../flask.pid) 2>/dev/null; then
-          echo "✅ Flask process is still running after startup check"
+        # Verify daemon started
+        if [ -f "../flask.pid" ] && kill -0 $(cat ../flask.pid) 2>/dev/null; then
+          echo "✅ Daemon started successfully (PID: $(cat ../flask.pid))"
+          echo "📍 Process details:"
+          ps aux | grep $(cat ../flask.pid) | grep -v grep || echo "Process details not available"
         else
-          echo "❌ Flask process died shortly after startup"
-          echo "📋 Last 30 lines of flask.log:"
-          tail -30 flask.log || true
-          echo ""
-          echo "📋 Last 30 lines of error.log:"
-          tail -30 error.log || true
-          echo ""
-          echo "📋 Checking for gunicorn processes:"
-          ps aux | grep gunicorn || true
-          echo ""
-          echo "📋 Checking port 5000:"
-          netstat -tulpn | grep 5000 || true
-          echo ""
-          echo "📋 System logs related to Python/Gunicorn:"
-          journalctl -u "*python*" -u "*gunicorn*" --no-pager -n 20 || true
+          echo "❌ Daemon failed to start"
+          echo "📋 Checking for any gunicorn processes:"
+          ps aux | grep gunicorn | grep -v grep || echo "No gunicorn processes found"
+          echo "📋 Recent logs:"
+          tail -20 flask.log 2>/dev/null || echo "No logs available"
           exit 1
         fi
 
