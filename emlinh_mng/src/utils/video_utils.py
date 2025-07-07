@@ -42,15 +42,15 @@ class VideoUtils:
             output_filename = f"video_{timestamp}_{safe_topic}.mp4"
             
             # Sử dụng config để lấy đường dẫn
-            output_dir = Config.WORKSPACE_ROOT
+            output_dir = Config.WORKSPACE_ROOT or '/tmp'
             output_path = os.path.join(output_dir, output_filename)
             
             # Đường dẫn Remotion project
-            remotion_path = Config.REMOTION_PATH
+            remotion_path = Config.REMOTION_PATH or ''
             
             # Tạo directory nếu chưa tồn tại và có quyền
             try:
-                parent_dir = os.path.dirname(output_dir)
+                parent_dir = os.path.dirname(output_dir or '')
                 if os.path.exists(parent_dir) and os.access(parent_dir, os.W_OK):
                     os.makedirs(output_dir, exist_ok=True)
                 else:
@@ -116,6 +116,7 @@ class VideoUtils:
     @staticmethod
     def _check_remotion_availability(remotion_path: str) -> bool:
         """Check if Remotion is available and working"""
+        import platform
         try:
             # Check basic requirements
             if not os.path.exists(remotion_path):
@@ -134,17 +135,30 @@ class VideoUtils:
             
             # Quick npx test with short timeout
             try:
-                result = subprocess.run(
-                    ["npx", "remotion", "--version"],
-                    cwd=remotion_path,
-                    capture_output=True,
-                    timeout=10
-                )
-                if result.returncode == 0:
+                if os.name == 'nt':
+                    # Windows: use shell=True and string command
+                    result = subprocess.run(
+                        "npx remotion --version",
+                        cwd=remotion_path,
+                        capture_output=True,
+                        text=True,
+                        shell=True,
+                        timeout=10
+                    )
+                else:
+                    # Linux/Mac: use list
+                    result = subprocess.run(
+                        ["npx", "remotion", "--version"],
+                        cwd=remotion_path,
+                        capture_output=True,
+                        text=True,
+                        timeout=10
+                    )
+                if result.returncode == 0 or ("remotion" in result.stdout.lower() or "@remotion/cli" in result.stdout.lower()):
                     print("✅ Remotion CLI available")
                     return True
                 else:
-                    print(f"⚠️ Remotion CLI test failed: {result.stderr.decode()[:100]}")
+                    print(f"⚠️ Remotion CLI test failed: {result.stderr[:100]}")
                     return False
             except Exception as e:
                 print(f"⚠️ Remotion CLI test error: {str(e)}")
@@ -205,30 +219,48 @@ The actual video would contain animated avatar content.
         Returns:
             bool: True nếu thành công
         """
+        import platform
         try:
             # Chuẩn bị command
             props_json = json.dumps(props)
-            
-            cmd = [
-                "npx", "remotion", "render",
-                composition,
-                output_path,
-                "--props", props_json,
-                "--concurrency", "1"
-            ]
-            
-            print(f"🔧 Running Remotion command: {' '.join(cmd)}")
-            print(f"🔧 Props: {props_json}")
-            
-            # Chạy command
-            result = subprocess.run(
-                cmd,
-                cwd=remotion_path,
-                capture_output=True,
-                text=True,
-                timeout=300  # 5 phút timeout
-            )
-            
+            if os.name == 'nt':
+                # Windows: ghi props ra file tạm
+                import tempfile
+                with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False, encoding='utf-8') as f:
+                    f.write(props_json)
+                    props_file = f.name
+                cmd = f'npx remotion render {composition} {output_path} --props={props_file} --concurrency 1'
+                print(f"🔧 Running Remotion command (Windows): {cmd}")
+                result = subprocess.run(
+                    cmd,
+                    cwd=remotion_path,
+                    capture_output=True,
+                    text=True,
+                    shell=True,
+                    timeout=300
+                )
+                # Xóa file tạm sau khi render
+                try:
+                    os.remove(props_file)
+                except Exception as e:
+                    print(f"⚠️ Could not remove temp props file: {e}")
+            else:
+                # Linux/Mac: dùng list như cũ
+                cmd = [
+                    "npx", "remotion", "render",
+                    composition,
+                    output_path,
+                    "--props", props_json,
+                    "--concurrency", "1"
+                ]
+                print(f"🔧 Running Remotion command (Linux/Mac): {' '.join(cmd)}")
+                result = subprocess.run(
+                    cmd,
+                    cwd=remotion_path,
+                    capture_output=True,
+                    text=True,
+                    timeout=300
+                )
             if result.returncode == 0:
                 print("✅ Remotion render completed successfully")
                 return True
@@ -237,7 +269,6 @@ The actual video would contain animated avatar content.
                 print(f"stdout: {result.stdout}")
                 print(f"stderr: {result.stderr}")
                 return False
-                
         except subprocess.TimeoutExpired:
             print("❌ Remotion render timeout (5 minutes)")
             return False
