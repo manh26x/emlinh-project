@@ -98,3 +98,4 @@ logs/
 # Audio files - keep folder but ignore content
 emlinh-remotion/public/audios/*
 !emlinh-remotion/public/audios/.gitkeep
+*_placeholder.txt

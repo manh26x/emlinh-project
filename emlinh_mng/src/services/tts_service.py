@@ -25,13 +25,21 @@ class TTSService:
                 raise PermissionError(f"No write permission to {self.audio_dir}")
         except Exception as e:
             print(f"Warning: Could not create audio directory {self.audio_dir}: {e}")
-            # Fallback to multiple possible locations
-            fallback_dirs = [
-                '/tmp/emlinh_audio',
-                f'/tmp/emlinh_audio_{os.getpid()}',  # Use PID for uniqueness
-                f'/tmp/emlinh_audio_{int(time.time())}',  # Use timestamp for uniqueness
-                os.path.expanduser('~/tmp/emlinh_audio')  # User home directory
-            ]
+            # Fallback to multiple possible locations based on OS
+            if os.name == 'nt':  # Windows
+                fallback_dirs = [
+                    os.path.join(os.path.expanduser('~'), 'AppData', 'Local', 'emlinh_audio'),
+                    os.path.join(os.path.expanduser('~'), 'emlinh_audio'),
+                    os.path.join(os.getcwd(), 'temp_audio'),
+                    os.path.join('C:', 'temp', 'emlinh_audio'),
+                ]
+            else:  # Unix/Linux
+                fallback_dirs = [
+                    '/tmp/emlinh_audio',
+                    f'/tmp/emlinh_audio_{os.getpid()}',  # Use PID for uniqueness
+                    f'/tmp/emlinh_audio_{int(time.time())}',  # Use timestamp for uniqueness
+                    os.path.expanduser('~/tmp/emlinh_audio')  # User home directory
+                ]
             
             for fallback_dir in fallback_dirs:
                 try:
@@ -148,61 +156,112 @@ class TTSService:
             raise e
     
     def _convert_mp3_to_wav(self, mp3_path: str, wav_path: str):
-        """Convert MP3 to WAV using ffmpeg"""
-        cmd = [
-            'ffmpeg', '-i', mp3_path,
-            '-acodec', 'pcm_s16le',
-            '-ar', '44100',
-            '-ac', '2',
-            '-y',  # Overwrite output files
-            wav_path
-        ]
+        """Convert MP3 to WAV using ffmpeg with Windows compatibility"""
+        # Try different ffmpeg executable names for Windows compatibility
+        ffmpeg_executables = ['ffmpeg', 'ffmpeg.exe']
         
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        if result.returncode != 0:
-            raise Exception(f"FFmpeg conversion failed: {result.stderr}")
+        for ffmpeg_cmd in ffmpeg_executables:
+            try:
+                cmd = [
+                    ffmpeg_cmd, '-i', mp3_path,
+                    '-acodec', 'pcm_s16le',
+                    '-ar', '44100',
+                    '-ac', '2',
+                    '-y',  # Overwrite output files
+                    wav_path
+                ]
+                
+                result = subprocess.run(cmd, capture_output=True, text=True)
+                if result.returncode == 0:
+                    return  # Success
+                else:
+                    print(f"❌ FFmpeg conversion failed with {ffmpeg_cmd}: {result.stderr}")
+            except FileNotFoundError:
+                print(f"⚠️ {ffmpeg_cmd} not found, trying next option...")
+                continue
+        
+        # If all ffmpeg attempts fail, use fallback
+        raise Exception(f"FFmpeg not found or conversion failed. Please install FFmpeg: https://ffmpeg.org/download.html")
     
     def _convert_wav_to_ogg(self, wav_path: str, ogg_path: str):
-        """Convert WAV to OGG using ffmpeg"""
-        cmd = [
-            'ffmpeg', '-i', wav_path,
-            '-c:a', 'libvorbis',
-            '-q:a', '4',  # Quality level
-            '-y',  # Overwrite output files
-            ogg_path
-        ]
+        """Convert WAV to OGG using ffmpeg with Windows compatibility"""
+        # Try different ffmpeg executable names for Windows compatibility
+        ffmpeg_executables = ['ffmpeg', 'ffmpeg.exe']
         
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        if result.returncode != 0:
-            raise Exception(f"WAV to OGG conversion failed: {result.stderr}")
+        for ffmpeg_cmd in ffmpeg_executables:
+            try:
+                cmd = [
+                    ffmpeg_cmd, '-i', wav_path,
+                    '-c:a', 'libvorbis',
+                    '-q:a', '4',  # Quality level
+                    '-y',  # Overwrite output files
+                    ogg_path
+                ]
+                
+                result = subprocess.run(cmd, capture_output=True, text=True)
+                if result.returncode == 0:
+                    return  # Success
+                else:
+                    print(f"❌ WAV to OGG conversion failed with {ffmpeg_cmd}: {result.stderr}")
+            except FileNotFoundError:
+                print(f"⚠️ {ffmpeg_cmd} not found, trying next option...")
+                continue
+        
+        # If all ffmpeg attempts fail, use fallback
+        raise Exception(f"FFmpeg not found or WAV to OGG conversion failed. Please install FFmpeg: https://ffmpeg.org/download.html")
     
     def _generate_lip_sync_json(self, ogg_path: str, text: str, json_path: str):
-        """Generate lip sync JSON using Rhubarb"""
+        """Generate lip sync JSON using Rhubarb with Windows compatibility"""
         try:
             # Tạo file text tạm
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False, encoding='utf-8') as f:
                 f.write(text)
                 text_file = f.name
             
-            # Chạy Rhubarb (giả sử đã cài đặt)
-            cmd = [
-                'rhubarb',
-                '-f', 'json',
-                '-d', text_file,
-                ogg_path,
-                '-o', json_path
-            ]
+            # Try different rhubarb executable names for Windows compatibility
+            rhubarb_executables = ['rhubarb', 'rhubarb.exe']
+            rhubarb_success = False
             
-            result = subprocess.run(cmd, capture_output=True, text=True)
+            for rhubarb_cmd in rhubarb_executables:
+                try:
+                    # Chạy Rhubarb (nếu đã cài đặt)
+                    cmd = [
+                        rhubarb_cmd,
+                        '-f', 'json',
+                        '-d', text_file,
+                        ogg_path,
+                        '-o', json_path
+                    ]
+                    
+                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+                    
+                    if result.returncode == 0:
+                        print(f"✅ Rhubarb lip sync generated successfully with {rhubarb_cmd}")
+                        rhubarb_success = True
+                        break
+                    else:
+                        print(f"⚠️ Rhubarb failed with {rhubarb_cmd}: {result.stderr}")
+                
+                except FileNotFoundError:
+                    print(f"⚠️ {rhubarb_cmd} not found, trying next option...")
+                    continue
+                except subprocess.TimeoutExpired:
+                    print(f"⚠️ {rhubarb_cmd} timeout, trying fallback...")
+                    continue
             
             # Cleanup text file
-            os.unlink(text_file)
+            try:
+                os.unlink(text_file)
+            except:
+                pass
             
-            if result.returncode != 0:
+            if not rhubarb_success:
+                print("⚠️ Rhubarb not available or failed, using simple lip sync fallback")
                 # Nếu Rhubarb không có, tạo JSON đơn giản
                 self._create_simple_lip_sync_json(json_path, ogg_path)
                 
         except Exception as e:
+            print(f"⚠️ Lip sync generation error: {e}")
             # Fallback: tạo JSON đơn giản nếu Rhubarb không hoạt động
             self._create_simple_lip_sync_json(json_path, ogg_path)
     
@@ -228,17 +287,37 @@ class TTSService:
             json.dump(simple_data, f, indent=2)
     
     def _get_audio_duration(self, audio_path: str) -> float:
-        """Lấy thời lượng audio bằng ffprobe"""
+        """Lấy thời lượng audio bằng ffprobe with Windows compatibility"""
+        # Try different ffprobe executable names for Windows compatibility
+        ffprobe_executables = ['ffprobe', 'ffprobe.exe']
+        
+        for ffprobe_cmd in ffprobe_executables:
+            try:
+                cmd = [
+                    ffprobe_cmd, '-v', 'quiet',
+                    '-show_entries', 'format=duration',
+                    '-of', 'csv=p=0',
+                    audio_path
+                ]
+                result = subprocess.run(cmd, capture_output=True, text=True)
+                if result.returncode == 0:
+                    duration = float(result.stdout.strip())
+                    return duration
+                else:
+                    print(f"⚠️ ffprobe failed with {ffprobe_cmd}: {result.stderr}")
+            except (FileNotFoundError, ValueError):
+                print(f"⚠️ {ffprobe_cmd} not found or invalid output, trying next option...")
+                continue
+        
+        # Fallback: estimate duration based on file size (rough approximation)
         try:
-            cmd = [
-                'ffprobe', '-v', 'quiet',
-                '-show_entries', 'format=duration',
-                '-of', 'csv=p=0',
-                audio_path
-            ]
-            result = subprocess.run(cmd, capture_output=True, text=True)
-            return float(result.stdout.strip())
+            file_size = os.path.getsize(audio_path)
+            # Rough estimation: assume ~44100 Hz, 16-bit, stereo = ~176KB per second
+            estimated_duration = file_size / (44100 * 2 * 2)
+            print(f"⚠️ Using estimated duration: {estimated_duration:.2f}s")
+            return max(estimated_duration, 1.0)  # At least 1 second
         except:
+            print("⚠️ Using default duration: 5.0s")
             return 5.0  # Default duration
     
     def get_tts_status(self, job_id: str) -> Optional[Dict[str, Any]]:

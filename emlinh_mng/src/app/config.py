@@ -19,20 +19,42 @@ class Config:
     SQLALCHEMY_ECHO = os.environ.get('SQLALCHEMY_ECHO', 'False').lower() == 'true'
     
     # Workspace and Path Configuration
-    # Sử dụng /app làm default trong container, fallback về thư mục hiện tại
+    # Sử dụng environment variable hoặc auto-detect based on OS
     WORKSPACE_ROOT = os.environ.get('WORKSPACE_ROOT')
     if not WORKSPACE_ROOT:
-        # Thử các path có thể, nhưng không test write permission
-        possible_paths = ['/app', '/home/mike/Documents/Code/emlinh_projects', os.getcwd()]
+        # Auto-detect workspace root based on OS and current location
+        current_dir = os.getcwd()
+        
+        # Windows-specific paths
+        if os.name == 'nt':  # Windows
+            possible_paths = [
+                current_dir,  # Current directory first
+                os.path.join(os.path.expanduser('~'), 'Documents', 'emlinh-project'),
+                os.path.join('C:', 'Users', 'Admin', 'Documents', 'emlinh-project'),
+                os.path.join(current_dir, '..'),  # Parent directory
+            ]
+        else:  # Unix/Linux
+            possible_paths = [
+                '/app', 
+                '/home/mike/Documents/Code/emlinh_projects', 
+                current_dir,
+                os.path.join(current_dir, '..')
+            ]
+        
         for path in possible_paths:
             if os.path.exists(path):
-                WORKSPACE_ROOT = path
+                WORKSPACE_ROOT = os.path.abspath(path)
                 break
         
-        # Nếu không tìm được path nào, sử dụng /tmp
+        # Fallback based on OS
         if not WORKSPACE_ROOT:
-            WORKSPACE_ROOT = '/tmp/emlinh_workspace'
+            if os.name == 'nt':  # Windows
+                WORKSPACE_ROOT = os.path.join(os.path.expanduser('~'), 'emlinh_workspace')
+            else:  # Unix/Linux
+                WORKSPACE_ROOT = '/tmp/emlinh_workspace'
     
+    # Normalize paths for current OS
+    WORKSPACE_ROOT = os.path.normpath(WORKSPACE_ROOT)
     REMOTION_PATH = os.path.join(WORKSPACE_ROOT, 'emlinh-remotion')
     REMOTION_OUTPUT_DIR = os.path.join(WORKSPACE_ROOT, 'emlinh-remotion', 'out')
     AUDIO_OUTPUT_DIR = os.path.join(WORKSPACE_ROOT, 'emlinh-remotion', 'public', 'audios')
@@ -50,29 +72,21 @@ class Config:
         failed_dirs = []
         
         for directory in directories:
-            # Tạo từng thư mục trung gian từ root
-            path_parts = directory.split('/')
-            current_path = ''
+            # Use os.path.normpath to handle both Windows and Unix paths
+            directory = os.path.normpath(directory)
             
-            for part in path_parts:
-                if part:  # Skip empty parts
-                    current_path = os.path.join(current_path, part) if current_path else part
-                    if current_path and not os.path.exists(current_path):
-                        try:
-                            os.makedirs(current_path, exist_ok=True)
-                            if current_path not in created_dirs:
-                                created_dirs.append(current_path)
-                        except (OSError, PermissionError) as e:
-                            if current_path not in failed_dirs:
-                                failed_dirs.append(current_path)
-                                print(f"Info: Skipping directory creation for {current_path} (parent not writable)")
-                            break
-            
-            # Kiểm tra kết quả cuối cùng
-            if os.path.exists(directory) and os.access(directory, os.W_OK):
-                print(f"✅ Directory ready: {directory}")
-            else:
-                print(f"⚠️ Directory not accessible: {directory}")
+            try:
+                # Create directory and all parent directories
+                os.makedirs(directory, exist_ok=True)
+                if os.path.exists(directory) and os.access(directory, os.W_OK):
+                    created_dirs.append(directory)
+                    print(f"✅ Directory ready: {directory}")
+                else:
+                    failed_dirs.append(directory)
+                    print(f"⚠️ Directory created but not writable: {directory}")
+            except (OSError, PermissionError) as e:
+                failed_dirs.append(directory)
+                print(f"❌ Failed to create directory {directory}: {e}")
         
         if created_dirs:
             print(f"✅ Created directories: {', '.join(created_dirs)}")
