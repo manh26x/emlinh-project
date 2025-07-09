@@ -1,4 +1,4 @@
-name: Deploy to Self-Hosted Server (Direct Host Execution)
+name: Deploy to Self-Hosted Server (Systemd Service)
 
 on:
   push:
@@ -25,9 +25,16 @@ jobs:
     steps:
     - name: Pre-checkout permission and process cleanup
       run: |
-        echo "🔧 Pre-checkout cleanup for direct host execution..."
+        echo "🔧 Pre-checkout cleanup for systemd service deployment..."
         
-        # Stop any running Flask/Node processes from previous deployments
+        # Stop the emlinh systemd service if it's running
+        if systemctl is-active --quiet emlinh; then
+          echo "🛑 Stopping emlinh systemd service..."
+          sudo systemctl stop emlinh
+          sleep 3
+        fi
+        
+        # Also stop any legacy processes that might still be running
         pkill -f "python.*app.py" 2>/dev/null || true
         pkill -f "flask.*run" 2>/dev/null || true
         pkill -f "node.*remotion" 2>/dev/null || true
@@ -52,7 +59,7 @@ jobs:
         
     - name: Post-checkout directory setup
       run: |
-        echo "📁 Setting up directories for direct host execution..."
+        echo "📁 Setting up directories for systemd service deployment..."
         mkdir -p public/audios public/models emlinh_mng/instance
         mkdir -p emlinh-remotion/out emlinh-remotion/public/audios
         chmod -R 755 public/ emlinh_mng/instance/ emlinh-remotion/out/ emlinh-remotion/public/audios/ 2>/dev/null || true
@@ -72,7 +79,7 @@ jobs:
 
     - name: Install Python dependencies
       run: |
-        echo "🐍 Installing Python dependencies for direct execution..."
+        echo "🐍 Installing Python dependencies for systemd service deployment..."
         cd emlinh_mng
         python -m pip install --upgrade pip
         pip install -r requirements.txt
@@ -80,7 +87,7 @@ jobs:
 
     - name: Install Node.js dependencies
       run: |
-        echo "📦 Installing Node.js dependencies for direct execution..."
+        echo "📦 Installing Node.js dependencies for systemd service deployment..."
         cd emlinh-remotion
         npm ci || {
           echo "⚠️ npm ci failed, trying npm install..."
@@ -160,14 +167,21 @@ jobs:
     steps:
     - name: Pre-deployment cleanup
       run: |
-        echo "🔧 Pre-deployment cleanup for direct host execution..."
+        echo "🔧 Pre-deployment cleanup for systemd service deployment..."
         
-        # Stop any existing application processes
+        # Stop the emlinh systemd service if it's running
+        if systemctl is-active --quiet emlinh; then
+          echo "🛑 Stopping emlinh systemd service..."
+          sudo systemctl stop emlinh
+          sleep 3
+        fi
+        
+        # Also stop any legacy processes that might still be running
         pkill -f "python.*app.py" 2>/dev/null || true
         pkill -f "flask.*run" 2>/dev/null || true
+        pkill -f "gunicorn" 2>/dev/null || true
         pkill -f "node.*remotion" 2>/dev/null || true
         pkill -f "npm.*start" 2>/dev/null || true
-        pkill -f "gunicorn" 2>/dev/null || true
         
         # Wait for processes to stop
         sleep 5
@@ -234,7 +248,7 @@ jobs:
 
     - name: Create necessary directories for host execution
       run: |
-        echo "📁 Creating directories for direct host execution..."
+        echo "📁 Creating directories for systemd service deployment..."
         mkdir -p public/audios public/models ssl
         mkdir -p emlinh_mng/instance
         mkdir -p emlinh-remotion/out emlinh-remotion/public/audios
@@ -248,7 +262,7 @@ jobs:
 
     - name: Validate environment and workspace setup
       run: |
-        echo "🔍 Validating environment setup for direct host execution..."
+        echo "🔍 Validating environment setup for systemd service deployment..."
         echo "WORKSPACE_ROOT: ${{ github.workspace }}"
         echo "Current directory: $(pwd)"
         echo "Python version: $(python --version)"
@@ -645,70 +659,27 @@ jobs:
       run: |
         echo "📜 Setting up service management commands..."
         
-        # Create service management scripts for convenience
-        cat > manage_service.sh << 'EOF'
-#!/bin/bash
-# Service management script for emlinh
-
-case "$1" in
-  start)
-    echo "🚀 Starting emlinh service..."
-    sudo systemctl start emlinh
-    sudo systemctl status emlinh --no-pager -l
-    ;;
-  stop)
-    echo "🛑 Stopping emlinh service..."
-    sudo systemctl stop emlinh
-    sudo systemctl status emlinh --no-pager -l
-    ;;
-  restart)
-    echo "🔄 Restarting emlinh service..."
-    sudo systemctl restart emlinh
-    sudo systemctl status emlinh --no-pager -l
-    ;;
-  status)
-    echo "📊 emlinh service status:"
-    sudo systemctl status emlinh --no-pager -l
-    ;;
-  logs)
-    echo "📋 Recent emlinh service logs:"
-    journalctl -u emlinh --no-pager -n 50
-    ;;
-  enable)
-    echo "✅ Enabling emlinh service..."
-    sudo systemctl enable emlinh
-    ;;
-  disable)
-    echo "❌ Disabling emlinh service..."
-    sudo systemctl disable emlinh
-    ;;
-  *)
-    echo "Usage: $0 {start|stop|restart|status|logs|enable|disable}"
-    echo ""
-    echo "Commands:"
-    echo "  start   - Start the emlinh service"
-    echo "  stop    - Stop the emlinh service"
-    echo "  restart - Restart the emlinh service"
-    echo "  status  - Show service status"
-    echo "  logs    - Show recent service logs"
-    echo "  enable  - Enable service to start on boot"
-    echo "  disable - Disable service from starting on boot"
-    exit 1
-    ;;
-esac
-EOF
-        
-        chmod +x manage_service.sh
-        
-        echo "✅ Service management script created:"
-        echo "   - manage_service.sh: Manage emlinh systemd service"
-        echo ""
-        echo "🛠️  Management Commands:"
-        echo "   Start:  ./manage_service.sh start"
-        echo "   Stop:   ./manage_service.sh stop" 
-        echo "   Status: ./manage_service.sh status"
-        echo "   Logs:   ./manage_service.sh logs"
-                 echo "   Restart: ./manage_service.sh restart"
+        # Set executable permissions for the management script
+        if [ -f "manage_service.sh" ]; then
+          chmod +x manage_service.sh
+          echo "✅ Service management script ready:"
+          echo "   - manage_service.sh: Manage emlinh systemd service"
+          echo ""
+          echo "🛠️  Management Commands:"
+          echo "   Start:  ./manage_service.sh start"
+          echo "   Stop:   ./manage_service.sh stop" 
+          echo "   Status: ./manage_service.sh status"
+          echo "   Logs:   ./manage_service.sh logs"
+          echo "   Restart: ./manage_service.sh restart"
+        else
+          echo "⚠️ manage_service.sh not found, creating basic commands..."
+          echo "🛠️  Basic Management Commands:"
+          echo "   Start:  sudo systemctl start emlinh"
+          echo "   Stop:   sudo systemctl stop emlinh" 
+          echo "   Status: sudo systemctl status emlinh"
+          echo "   Logs:   journalctl -u emlinh -f"
+          echo "   Restart: sudo systemctl restart emlinh"
+        fi
 
     - name: Final permission and cleanup setup
       run: |
@@ -752,7 +723,7 @@ EOF
         
     - name: Final workspace cleanup
       run: |
-        echo "🧹 Final workspace cleanup for host execution..."
+        echo "🧹 Final workspace cleanup for systemd service deployment..."
         
         # Clean up temporary files but keep running applications
         sudo bash -c "
@@ -774,11 +745,11 @@ EOF
           echo "⚠️ Some cleanup operations failed, but continuing..."
         }
         
-        echo "✅ Final cleanup completed for host execution"
+        echo "✅ Final cleanup completed for systemd service deployment"
         
     - name: Notify deployment status
       run: |
-        echo "📢 Deployment Status Notification (Direct Host Execution)"
+        echo "📢 Deployment Status Notification (Systemd Service)"
         echo "=================================================="
         
         if [ "${{ needs.deploy.result }}" == "success" ]; then
