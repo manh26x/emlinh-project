@@ -237,7 +237,7 @@ The actual video would contain animated avatar content.
                     capture_output=True,
                     text=True,
                     shell=True,
-                    timeout=300
+                    timeout=1200
                 )
                 # Xóa file tạm sau khi render
                 try:
@@ -259,7 +259,7 @@ The actual video would contain animated avatar content.
                     cwd=remotion_path,
                     capture_output=True,
                     text=True,
-                    timeout=300
+                    timeout=1200
                 )
             if result.returncode == 0:
                 print("✅ Remotion render completed successfully")
@@ -270,7 +270,7 @@ The actual video would contain animated avatar content.
                 print(f"stderr: {result.stderr}")
                 return False
         except subprocess.TimeoutExpired:
-            print("❌ Remotion render timeout (5 minutes)")
+            print("❌ Remotion render timeout (20 minutes)")
             return False
         except Exception as e:
             print(f"❌ Remotion render error: {str(e)}")

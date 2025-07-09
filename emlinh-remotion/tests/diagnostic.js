@@ -59,7 +59,7 @@ try {
 console.log('\n🎬 Testing render...');
 const outputFile = 'out/diagnostic-test.mp4';
 const props = { audioFileName: 'None', durationInSeconds: 2 };
-const command = `npx remotion render Scene-Portrait --props='${JSON.stringify(props)}' --output=${outputFile} --timeout=30000`;
+const command = `npx remotion render Scene-Portrait --props='${JSON.stringify(props)}' --output=${outputFile} --timeout=1200000`;
 
 console.log(`⚡ Command: ${command}`);
 

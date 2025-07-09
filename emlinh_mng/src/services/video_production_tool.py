@@ -136,9 +136,9 @@ class VideoProductionTool(BaseTool):
             video_record.job_id = video_job_id
             db.session.commit()
             
-            # Chờ video render hoàn thành với timeout 180s thay vì 120s
+            # Chờ video render hoàn thành với timeout 1200s (20 phút)
             video_result = None
-            video_timeout_seconds = 180
+            video_timeout_seconds = 1200
             video_poll_interval = 3
             video_max_attempts = video_timeout_seconds // video_poll_interval  # 60 attempts max
             
