@@ -22,6 +22,47 @@ else
     pip install flask gunicorn python-dotenv
 fi
 
+# Install FFmpeg if not available
+echo "🎬 Checking FFmpeg..."
+if ! command -v ffmpeg &> /dev/null; then
+    echo "📥 Installing FFmpeg..."
+    sudo apt-get update
+    sudo apt-get install -y ffmpeg
+    echo "✅ FFmpeg installed"
+else
+    echo "✅ FFmpeg already available"
+fi
+
+# Verify FFmpeg installation
+if command -v ffmpeg &> /dev/null; then
+    echo "✅ FFmpeg version: $(ffmpeg -version | head -n1)"
+else
+    echo "⚠️ FFmpeg not available - audio conversion may fail"
+fi
+
+# Install Rhubarb Lip Sync if not available
+echo "🎤 Checking Rhubarb Lip Sync..."
+if ! command -v rhubarb &> /dev/null; then
+    echo "📥 Installing Rhubarb Lip Sync..."
+    cd /tmp
+    wget https://github.com/DanielSWolf/rhubarb-lip-sync/releases/download/v1.13.0/rhubarb-lip-sync-1.13.0-linux.zip
+    unzip rhubarb-lip-sync-1.13.0-linux.zip
+    find . -name "rhubarb" -type f -exec chmod +x {} \;
+    find . -name "rhubarb" -type f -exec sudo ln -sf {} /usr/local/bin/rhubarb \;
+    rm rhubarb-lip-sync-1.13.0-linux.zip
+    cd - > /dev/null
+    echo "✅ Rhubarb Lip Sync installed"
+else
+    echo "✅ Rhubarb Lip Sync already available"
+fi
+
+# Verify Rhubarb installation
+if command -v rhubarb &> /dev/null; then
+    echo "✅ Rhubarb version: $(rhubarb --version 2>/dev/null || echo 'version info not available')"
+else
+    echo "⚠️ Rhubarb not available - lip sync will use fallback"
+fi
+
 # Verify installations
 echo "🔍 Verifying installations..."
 python -c "import flask; print(f'✅ Flask {flask.__version__} ready')"

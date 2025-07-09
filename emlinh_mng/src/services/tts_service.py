@@ -156,9 +156,16 @@ class TTSService:
             raise e
     
     def _convert_mp3_to_wav(self, mp3_path: str, wav_path: str):
-        """Convert MP3 to WAV using ffmpeg with Windows compatibility"""
-        # Try different ffmpeg executable names for Windows compatibility
-        ffmpeg_executables = ['ffmpeg', 'ffmpeg.exe']
+        """Convert MP3 to WAV using ffmpeg with cross-platform compatibility"""
+        # Detect operating system and choose appropriate ffmpeg executable
+        import platform
+        system = platform.system().lower()
+        
+        if system == 'windows':
+            ffmpeg_executables = ['ffmpeg.exe', 'ffmpeg']
+        else:
+            # Linux, macOS, etc.
+            ffmpeg_executables = ['ffmpeg']
         
         for ffmpeg_cmd in ffmpeg_executables:
             try:
@@ -184,9 +191,16 @@ class TTSService:
         raise Exception(f"FFmpeg not found or conversion failed. Please install FFmpeg: https://ffmpeg.org/download.html")
     
     def _convert_wav_to_ogg(self, wav_path: str, ogg_path: str):
-        """Convert WAV to OGG using ffmpeg with Windows compatibility"""
-        # Try different ffmpeg executable names for Windows compatibility
-        ffmpeg_executables = ['ffmpeg', 'ffmpeg.exe']
+        """Convert WAV to OGG using ffmpeg with cross-platform compatibility"""
+        # Detect operating system and choose appropriate ffmpeg executable
+        import platform
+        system = platform.system().lower()
+        
+        if system == 'windows':
+            ffmpeg_executables = ['ffmpeg.exe', 'ffmpeg']
+        else:
+            # Linux, macOS, etc.
+            ffmpeg_executables = ['ffmpeg']
         
         for ffmpeg_cmd in ffmpeg_executables:
             try:
@@ -211,15 +225,23 @@ class TTSService:
         raise Exception(f"FFmpeg not found or WAV to OGG conversion failed. Please install FFmpeg: https://ffmpeg.org/download.html")
     
     def _generate_lip_sync_json(self, ogg_path: str, text: str, json_path: str):
-        """Generate lip sync JSON using Rhubarb with Windows compatibility"""
+        """Generate lip sync JSON using Rhubarb with cross-platform compatibility"""
         try:
             # Tạo file text tạm
             with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False, encoding='utf-8') as f:
                 f.write(text)
                 text_file = f.name
             
-            # Try different rhubarb executable names for Windows compatibility
-            rhubarb_executables = ['rhubarb', 'rhubarb.exe']
+            # Detect operating system and choose appropriate rhubarb executable
+            import platform
+            system = platform.system().lower()
+            
+            if system == 'windows':
+                rhubarb_executables = ['rhubarb.exe', 'rhubarb']
+            else:
+                # Linux, macOS, etc.
+                rhubarb_executables = ['rhubarb']
+            
             rhubarb_success = False
             
             for rhubarb_cmd in rhubarb_executables:
@@ -287,9 +309,16 @@ class TTSService:
             json.dump(simple_data, f, indent=2)
     
     def _get_audio_duration(self, audio_path: str) -> float:
-        """Lấy thời lượng audio bằng ffprobe with Windows compatibility"""
-        # Try different ffprobe executable names for Windows compatibility
-        ffprobe_executables = ['ffprobe', 'ffprobe.exe']
+        """Lấy thời lượng audio bằng ffprobe with cross-platform compatibility"""
+        # Detect operating system and choose appropriate ffprobe executable
+        import platform
+        system = platform.system().lower()
+        
+        if system == 'windows':
+            ffprobe_executables = ['ffprobe.exe', 'ffprobe']
+        else:
+            # Linux, macOS, etc.
+            ffprobe_executables = ['ffprobe']
         
         for ffprobe_cmd in ffprobe_executables:
             try:
