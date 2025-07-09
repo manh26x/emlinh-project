@@ -371,6 +371,15 @@ jobs:
     - name: Stop existing application processes
       run: |
         echo "🛑 Stopping existing application processes..."
+        
+        # Stop the emlinh systemd service if it's running
+        if systemctl is-active --quiet emlinh; then
+          echo "🛑 Stopping emlinh systemd service..."
+          sudo systemctl stop emlinh
+          sleep 3
+        fi
+        
+        # Also stop any legacy processes that might still be running
         pkill -f "python.*app.py" 2>/dev/null || true
         pkill -f "flask.*run" 2>/dev/null || true
         pkill -f "gunicorn" 2>/dev/null || true
@@ -379,9 +388,9 @@ jobs:
         sleep 5
         echo "✅ Existing processes stopped"
 
-    - name: Test Flask application before starting Gunicorn
+    - name: Test Flask application before starting service
       run: |
-        echo "🧪 Testing Flask application before production startup..."
+        echo "🧪 Testing Flask application before service startup..."
         cd emlinh_mng
         
         # Activate virtual environment
@@ -507,125 +516,49 @@ jobs:
         
         echo "✅ All Flask application tests passed"
 
-    - name: Start Flask application as daemon (CI/CD-safe)
+    - name: Start application using systemd service
       run: |
-        echo "🌶️ Starting Flask application as proper daemon for CI/CD..."
+        echo "🚀 Starting application using systemd service emlinh..."
         
-        # Try daemon script first (preferred method)
-        if [ -f "start_app_daemon.sh" ]; then
-          echo "🚀 Using daemon script approach..."
-          chmod +x start_app_daemon.sh
-          ./start_app_daemon.sh && {
-            echo "✅ Application started via daemon script"
-            exit 0
-          } || {
-            echo "⚠️ Daemon script failed, trying systemd approach..."
-          }
-        fi
-        
-        # Try systemd if available
-        if command -v systemctl >/dev/null 2>&1; then
-          echo "🔧 Attempting systemd setup..."
-          if [ -f "create_systemd_service.sh" ]; then
-            chmod +x create_systemd_service.sh
-            ./create_systemd_service.sh || {
-              echo "⚠️ Systemd setup failed, using manual daemon approach"
-            }
-            
-            # Try to start via systemd
-            if [ -f "start_app_systemd.sh" ]; then
-              chmod +x start_app_systemd.sh
-              ./start_app_systemd.sh && {
-                echo "✅ Application started via systemd"
-                exit 0
-              } || {
-                echo "⚠️ Systemd start failed, using manual daemon approach"
-              }
-            fi
+        # Check if emlinh service exists
+        if systemctl list-unit-files | grep -q emlinh.service; then
+          echo "✅ Found emlinh systemd service"
+          
+          # Reload systemd daemon to pick up any changes
+          sudo systemctl daemon-reload
+          
+          # Enable the service if not already enabled
+          sudo systemctl enable emlinh
+          
+          # Start the service
+          echo "🚀 Starting emlinh service..."
+          sudo systemctl start emlinh
+          
+          # Wait a moment for service to start
+          sleep 5
+          
+          # Check service status
+          if systemctl is-active --quiet emlinh; then
+            echo "✅ emlinh service started successfully"
+            echo "📋 Service status:"
+            systemctl status emlinh --no-pager -l
+          else
+            echo "❌ emlinh service failed to start"
+            echo "📋 Service status:"
+            systemctl status emlinh --no-pager -l
+            echo "📋 Recent logs:"
+            journalctl -u emlinh --no-pager -n 20
+            exit 1
           fi
-        fi
-        
-        # Manual daemon approach as fallback
-        echo "🔧 Using manual daemon approach..."
-        cd emlinh_mng
-        source venv/bin/activate
-        
-        # Create enhanced gunicorn configuration with daemon mode
-        cat > gunicorn.conf.py << 'EOF'
-        import multiprocessing
-        import os
-
-        # Server socket
-        bind = "0.0.0.0:5000"
-        backlog = 2048
-
-        # Worker processes
-        workers = 2
-        worker_class = "sync"
-        worker_connections = 1000
-        timeout = 60
-        keepalive = 30
-        max_requests = 1000
-        max_requests_jitter = 50
-
-        # Restart workers after this many requests, to help prevent memory leaks
-        preload_app = True
-
-        # Logging
-        accesslog = "access.log"
-        errorlog = "error.log"
-        loglevel = "info"
-        access_log_format = '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s"'
-
-        # Process naming
-        proc_name = "emlinh_flask_app"
-
-        # Server mechanics - DAEMON MODE
-        daemon = True
-        pidfile = "../flask.pid"
-        user = None
-        group = None
-        tmp_upload_dir = None
-
-        # SSL
-        keyfile = None
-        certfile = None
-        EOF
-        
-        # Test configuration
-        echo "🔍 Testing Gunicorn daemon configuration..."
-        gunicorn --check-config -c gunicorn.conf.py wsgi:application || {
-          echo "❌ Gunicorn configuration test failed"
-          exit 1
-        }
-        
-        # Start as proper daemon with multiple detachment methods
-        echo "🚀 Starting Gunicorn as daemon with CI/CD-safe detachment..."
-        
-        # Method: Use setsid + daemon flag for complete detachment
-        setsid gunicorn -c gunicorn.conf.py wsgi:application
-        
-        # Wait for daemon to start
-        echo "⏳ Waiting for daemon to initialize..."
-        sleep 8
-        
-        # Verify daemon started
-        if [ -f "../flask.pid" ] && kill -0 $(cat ../flask.pid) 2>/dev/null; then
-          echo "✅ Daemon started successfully (PID: $(cat ../flask.pid))"
-          echo "📍 Process details:"
-          ps aux | grep $(cat ../flask.pid) | grep -v grep || echo "Process details not available"
         else
-          echo "❌ Daemon failed to start"
-          echo "📋 Checking for any gunicorn processes:"
-          ps aux | grep gunicorn | grep -v grep || echo "No gunicorn processes found"
-          echo "📋 Recent logs:"
-          tail -20 flask.log 2>/dev/null || echo "No logs available"
+          echo "❌ emlinh systemd service not found"
+          echo "💡 Please ensure the emlinh.service file is properly configured on the server"
           exit 1
         fi
 
-    - name: Wait for Flask application to be ready
+    - name: Wait for application to be ready
       run: |
-        echo "⏳ Waiting for Flask application to be ready..."
+        echo "⏳ Waiting for application to be ready..."
         
         # Enhanced health check with better debugging
         attempts=0
@@ -634,31 +567,29 @@ jobs:
         while [ $attempts -lt $max_attempts ]; do
           echo "🔍 Health check attempt $((attempts + 1))/$max_attempts..."
           
-          # Check if process is still running
-          if [ -f "flask.pid" ] && kill -0 $(cat flask.pid) 2>/dev/null; then
-            echo "✅ Flask process is running (PID: $(cat flask.pid))"
+          # Check if service is still running
+          if systemctl is-active --quiet emlinh; then
+            echo "✅ emlinh service is running"
             
             # Try health check
             if curl -f -s http://localhost:${{ env.FLASK_PORT }}/health >/dev/null 2>&1; then
-              echo "✅ Flask application is ready and responding to health checks!"
+              echo "✅ Application is ready and responding to health checks!"
               break
             else
-              echo "⚠️ Flask process running but not responding to health check yet..."
+              echo "⚠️ Service running but not responding to health check yet..."
               
               # Show recent logs for debugging
               if [ $((attempts % 4)) -eq 0 ]; then
-                echo "📋 Recent logs (last 10 lines):"
-                tail -10 emlinh_mng/flask.log 2>/dev/null || echo "No flask.log found"
-                echo "📋 Recent error logs (last 5 lines):"
-                tail -5 emlinh_mng/error.log 2>/dev/null || echo "No error.log found"
+                echo "📋 Recent service logs (last 10 lines):"
+                journalctl -u emlinh --no-pager -n 10
               fi
             fi
           else
-            echo "❌ Flask process is not running!"
-            echo "📋 Full flask.log:"
-            cat emlinh_mng/flask.log 2>/dev/null || echo "No flask.log found"
-            echo "📋 Full error.log:"
-            cat emlinh_mng/error.log 2>/dev/null || echo "No error.log found"
+            echo "❌ emlinh service is not running!"
+            echo "📋 Service status:"
+            systemctl status emlinh --no-pager -l
+            echo "📋 Recent logs:"
+            journalctl -u emlinh --no-pager -n 20
             exit 1
           fi
           
@@ -668,35 +599,19 @@ jobs:
         
         # Final check
         if [ $attempts -eq $max_attempts ]; then
-          echo "❌ Flask application failed to start properly after $max_attempts attempts"
+          echo "❌ Application failed to start properly after $max_attempts attempts"
           echo ""
           echo "📋 Final diagnostic information:"
-          echo "Process status:"
-          if [ -f "flask.pid" ]; then
-            if kill -0 $(cat flask.pid) 2>/dev/null; then
-              echo "  ✅ Process is running (PID: $(cat flask.pid))"
-            else
-              echo "  ❌ Process is not running"
-            fi
-          else
-            echo "  ❌ PID file not found"
-          fi
+          echo "Service status:"
+          systemctl status emlinh --no-pager -l
           
           echo ""
           echo "Port status:"
           netstat -tulpn | grep 5000 || echo "  ❌ No process listening on port 5000"
           
           echo ""
-          echo "Last 30 lines of flask.log:"
-          tail -30 emlinh_mng/flask.log 2>/dev/null || echo "  ❌ No flask.log found"
-          
-          echo ""
-          echo "Last 30 lines of error.log:"
-          tail -30 emlinh_mng/error.log 2>/dev/null || echo "  ❌ No error.log found"
-          
-          echo ""
-          echo "Gunicorn processes:"
-          ps aux | grep gunicorn || echo "  ❌ No gunicorn processes found"
+          echo "Last 30 lines of service logs:"
+          journalctl -u emlinh --no-pager -n 30
           
           exit 1
         fi
@@ -711,11 +626,11 @@ jobs:
           exit 1
         }
         
-        # Check if Flask process is running
-        if [ -f "flask.pid" ] && kill -0 $(cat flask.pid) 2>/dev/null; then
-          echo "✅ Flask process is running (PID: $(cat flask.pid))"
+        # Check if service is running
+        if systemctl is-active --quiet emlinh; then
+          echo "✅ emlinh service is running"
         else
-          echo "❌ Flask process is not running"
+          echo "❌ emlinh service is not running"
           exit 1
         fi
         
@@ -726,41 +641,78 @@ jobs:
         
         echo "✅ Deployment health verification passed!"
 
-    - name: Setup application management scripts
+    - name: Setup service management commands
       run: |
-        echo "📜 Setting up application management scripts (using pre-existing scripts)..."
+        echo "📜 Setting up service management commands..."
         
-        # Verify management scripts exist and set executable permissions
-        if [ -f "start_app.sh" ] && [ -f "stop_app.sh" ] && [ -f "status_app.sh" ]; then
-          echo "✅ Found existing management scripts"
-          chmod +x start_app.sh stop_app.sh status_app.sh
-          
-          # Also set permissions for additional scripts if they exist
-          [ -f "start_app_simple.sh" ] && chmod +x start_app_simple.sh
-          [ -f "test_env.sh" ] && chmod +x test_env.sh
-          [ -f "debug_virtual_env.sh" ] && chmod +x debug_virtual_env.sh
-          [ -f "debug_deployment.sh" ] && chmod +x debug_deployment.sh
-          
-          echo "✅ Management scripts ready:"
-          echo "   - start_app.sh: Enhanced start script with Gunicorn + Flask fallback"
-          echo "   - start_app_simple.sh: Simple Flask development server"
-          echo "   - stop_app.sh: Stop the application"  
-          echo "   - status_app.sh: Check application status"
-          echo "   - test_env.sh: Test environment setup"
-          echo "   - debug_virtual_env.sh: Debug environment issues"
-          echo "   - debug_deployment.sh: Debug deployment issues"
-        else
-          echo "❌ Management scripts not found in repository"
-          echo "💡 Please ensure the following scripts are committed to the repository:"
-          echo "   - start_app.sh"
-          echo "   - stop_app.sh" 
-          echo "   - status_app.sh"
-          exit 1
-        fi
+        # Create service management scripts for convenience
+        cat > manage_service.sh << 'EOF'
+#!/bin/bash
+# Service management script for emlinh
+
+case "$1" in
+  start)
+    echo "🚀 Starting emlinh service..."
+    sudo systemctl start emlinh
+    sudo systemctl status emlinh --no-pager -l
+    ;;
+  stop)
+    echo "🛑 Stopping emlinh service..."
+    sudo systemctl stop emlinh
+    sudo systemctl status emlinh --no-pager -l
+    ;;
+  restart)
+    echo "🔄 Restarting emlinh service..."
+    sudo systemctl restart emlinh
+    sudo systemctl status emlinh --no-pager -l
+    ;;
+  status)
+    echo "📊 emlinh service status:"
+    sudo systemctl status emlinh --no-pager -l
+    ;;
+  logs)
+    echo "📋 Recent emlinh service logs:"
+    journalctl -u emlinh --no-pager -n 50
+    ;;
+  enable)
+    echo "✅ Enabling emlinh service..."
+    sudo systemctl enable emlinh
+    ;;
+  disable)
+    echo "❌ Disabling emlinh service..."
+    sudo systemctl disable emlinh
+    ;;
+  *)
+    echo "Usage: $0 {start|stop|restart|status|logs|enable|disable}"
+    echo ""
+    echo "Commands:"
+    echo "  start   - Start the emlinh service"
+    echo "  stop    - Stop the emlinh service"
+    echo "  restart - Restart the emlinh service"
+    echo "  status  - Show service status"
+    echo "  logs    - Show recent service logs"
+    echo "  enable  - Enable service to start on boot"
+    echo "  disable - Disable service from starting on boot"
+    exit 1
+    ;;
+esac
+EOF
+        
+        chmod +x manage_service.sh
+        
+        echo "✅ Service management script created:"
+        echo "   - manage_service.sh: Manage emlinh systemd service"
+        echo ""
+        echo "🛠️  Management Commands:"
+        echo "   Start:  ./manage_service.sh start"
+        echo "   Stop:   ./manage_service.sh stop" 
+        echo "   Status: ./manage_service.sh status"
+        echo "   Logs:   ./manage_service.sh logs"
+                 echo "   Restart: ./manage_service.sh restart"
 
     - name: Final permission and cleanup setup
       run: |
-        echo "🧹 Final permission and cleanup setup for host execution..."
+        echo "🧹 Final permission and cleanup setup for systemd service..."
         
         # Ensure proper permissions for application directories
         sudo chown -R $USER:$USER . 2>/dev/null || true
@@ -775,7 +727,7 @@ jobs:
         mkdir -p emlinh-remotion/out emlinh-remotion/public/audios 2>/dev/null || true
         chmod -R 755 public/ emlinh_mng/instance/ emlinh-remotion/out/ emlinh-remotion/public/audios/ 2>/dev/null || true
         
-        echo "✅ Final setup completed for direct host execution"
+        echo "✅ Final setup completed for systemd service deployment"
 
   notification:
     runs-on: self-hosted
@@ -787,15 +739,15 @@ jobs:
       run: |
         echo "📊 Final application status check..."
         
-        if [ -f "${{ github.workspace }}/flask.pid" ]; then
-          if kill -0 $(cat ${{ github.workspace }}/flask.pid) 2>/dev/null; then
-            echo "✅ Flask application is running"
-            curl -s http://localhost:5000/health >/dev/null && echo "✅ Health check passed"
-          else
-            echo "⚠️ Flask application PID file exists but process is not running"
-          fi
+        if systemctl is-active --quiet emlinh; then
+          echo "✅ emlinh service is running"
+          curl -s http://localhost:5000/health >/dev/null && echo "✅ Health check passed"
+          echo "📋 Service status:"
+          systemctl status emlinh --no-pager -l
         else
-          echo "⚠️ Flask PID file not found"
+          echo "⚠️ emlinh service is not running"
+          echo "📋 Service status:"
+          systemctl status emlinh --no-pager -l
         fi
         
     - name: Final workspace cleanup
@@ -831,32 +783,34 @@ jobs:
         
         if [ "${{ needs.deploy.result }}" == "success" ]; then
           echo "🎉 Deployment thành công!"
-          echo "✅ Ứng dụng emlinh_mng đã được deploy trực tiếp trên host"
+          echo "✅ Ứng dụng emlinh_mng đã được deploy qua systemd service"
           echo "✅ Ứng dụng emlinh-remotion đã được setup trên host"
           echo "🔗 App URL: http://localhost:5000"
-          echo "📋 Deployment Mode: Direct Host Execution (No Docker)"
+          echo "📋 Deployment Mode: Systemd Service (emlinh)"
           echo ""
           echo "🛠️  Management Commands:"
-          echo "   Start:  ./start_app.sh"
-          echo "   Stop:   ./stop_app.sh" 
-          echo "   Status: ./status_app.sh"
+          echo "   Start:  ./manage_service.sh start"
+          echo "   Stop:   ./manage_service.sh stop" 
+          echo "   Status: ./manage_service.sh status"
+          echo "   Logs:   ./manage_service.sh logs"
+          echo "   Restart: ./manage_service.sh restart"
           echo ""
           echo "📁 Application Structure:"
-          echo "   - Flask App: Running on port 5000 with Gunicorn"
+          echo "   - Flask App: Running on port 5000 via systemd service"
           echo "   - Static Files: Served directly from filesystem"
-          echo "   - Logs: Available in emlinh_mng/flask.log"
-          echo "   - PID File: flask.pid for process management"
+          echo "   - Logs: Available via journalctl -u emlinh"
+          echo "   - Service: emlinh systemd service for process management"
         else
           echo "❌ Deployment thất bại!"
           echo "🔍 Kiểm tra logs để xem chi tiết lỗi"
-          echo "📋 Mode: Direct Host Execution (No Docker Required)"
+          echo "📋 Mode: Systemd Service (emlinh)"
           echo ""
           echo "🚨 Troubleshooting Steps:"
-          echo "   1. Run debug script: ./debug_deployment.sh"
-          echo "   2. Check application logs: cat emlinh_mng/flask.log"
-          echo "   3. Check error logs: cat emlinh_mng/error.log"
-          echo "   4. Check application status: ./status_app.sh"
-          echo "   5. Try manual restart: ./start_app.sh"
+          echo "   1. Check service status: ./manage_service.sh status"
+          echo "   2. Check service logs: ./manage_service.sh logs"
+          echo "   3. Restart service: ./manage_service.sh restart"
+          echo "   4. Check systemd logs: journalctl -u emlinh -f"
+          echo "   5. Check service configuration: systemctl cat emlinh"
           echo "   6. Test manual startup: cd emlinh_mng && source venv/bin/activate && python src/app/run.py"
           exit 1
         fi
