@@ -1,9 +1,7 @@
 from flask import render_template, request, jsonify, session, send_file, abort, Response
 from src.app.extensions import db, csrf
 from src.services.flow_service import flow_service
-from src.services.facebook_service import facebook_service
-from src.services.chat_service import ChatService
-from src.services.embedding_service import EmbeddingService
+from src.services.chat_service import get_chat_service
 from src.app.models import Chat, Idea, Video
 import threading
 import uuid
@@ -12,9 +10,6 @@ from datetime import datetime
 import os
 import mimetypes
 from pathlib import Path
-
-from flask_wtf.csrf import CSRFProtect
-from flask_socketio import SocketIO, emit, join_room, leave_room
 
 def safe_datetime_to_string(dt_obj):
     """Safely convert datetime object to string, return as-is if already string"""
@@ -246,7 +241,7 @@ def register_routes(app, socketio=None):
         try:
             limit = request.args.get('limit', 50, type=int)
             
-            chat_service = ChatService()
+            chat_service = get_chat_service()
             history = chat_service.get_chat_history(session_id, limit)
             
             return jsonify({
@@ -276,7 +271,7 @@ def register_routes(app, socketio=None):
                     'message': 'Query không được để trống'
                 }), 400
             
-            chat_service = ChatService()
+            chat_service = get_chat_service()
             results = chat_service.search_similar_conversations(query, limit)
             
             return jsonify({
