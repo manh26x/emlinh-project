@@ -4,7 +4,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 
 from src.app.app import create_app
 
-app, socketio = create_app()
+app = create_app()
 
 if __name__ == '__main__':
     # Detect environment
@@ -14,13 +14,11 @@ if __name__ == '__main__':
     # Configure based on environment
     if is_production or is_docker:
         # Production/Docker environment
-        socketio.run(
-            app, 
+        app.run(
             debug=False, 
             host='0.0.0.0', 
-            port=5000, 
-            allow_unsafe_werkzeug=True
+            port=5000
         )
     else:
         # Development environment
-        socketio.run(app, debug=True, host='0.0.0.0', port=5000)
+        app.run(debug=True, host='0.0.0.0', port=5000)

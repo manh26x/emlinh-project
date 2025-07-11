@@ -45,7 +45,7 @@ global.navigator = {
     }
 };
 
-// Mock Socket.IO
+// Socket.IO removed - using SSE instead
 global.io = () => ({
     on: jest.fn(),
     emit: jest.fn(),

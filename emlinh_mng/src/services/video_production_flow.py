@@ -292,7 +292,7 @@ QUAN TRỌNG:
             except RuntimeError:
                 # Tạo app context mới
                 from ..app.app import create_app
-                app, _ = create_app()  # create_app returns (app, socketio)
+                app = create_app()  # create_app returns app only
                 app_context = app.app_context()
                 app_context.push()
             
@@ -493,7 +493,7 @@ QUAN TRỌNG:
                 app_context = None
             except RuntimeError:
                 from ..app.app import create_app
-                app, _ = create_app()  # create_app returns (app, socketio)
+                app = create_app()  # create_app returns app only
                 app_context = app.app_context()
                 app_context.push()
             
@@ -670,10 +670,8 @@ def create_video_from_topic_realtime(
     composition: str = "Scene-Landscape", 
     background: str = "office",
     voice: str = "nova",
-    socketio=None,
-    session_id: str = "",
     job_id: str = "",
-    app_instance=None  # Thêm app instance parameter
+    app_instance=None  # Flask app instance parameter
 ) -> Dict[str, Any]:
     """
     Hàm tạo video với realtime updates qua Server-Sent Events
@@ -684,8 +682,6 @@ def create_video_from_topic_realtime(
         composition: Loại composition
         background: Background scene
         voice: Giọng đọc TTS
-        socketio: DEPRECATED - không sử dụng nữa
-        session_id: DEPRECATED - không cần cho SSE
         job_id: Job ID để tracking
         app_instance: Flask app instance để access progress store
         

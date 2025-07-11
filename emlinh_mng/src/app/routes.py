@@ -19,7 +19,7 @@ def safe_datetime_to_string(dt_obj):
         return dt_obj.isoformat()
     return str(dt_obj)  # Return as string if not datetime
 
-def register_routes(app, socketio=None):
+def register_routes(app):
     """Register all routes with the Flask app"""
     
     @app.route('/')
@@ -546,62 +546,230 @@ def register_routes(app, socketio=None):
 
     @app.route('/api/video-progress/<job_id>')
     def video_progress_stream(job_id):
-        """Server-Sent Events endpoint để stream video progress"""
+        """
+        Enhanced Server-Sent Events endpoint với auto-reconnection support
+        """
         def generate_progress_events():
             import time
             import json
             from collections import defaultdict
             
-            # Store để tracking video progress
+            # Initialize progress store nếu chưa có
             if not hasattr(app, 'video_progress_store'):
                 app.video_progress_store = defaultdict(list)
             
             # Send initial connection confirmation
-            yield f"data: {json.dumps({'type': 'connected', 'job_id': job_id})}\n\n"
+            yield f"data: {json.dumps({'type': 'connected', 'job_id': job_id, 'timestamp': datetime.now().isoformat()})}\n\n"
             
             last_event_index = 0
-            max_wait = 300  # 5 minutes timeout
+            max_wait = 600  # 10 minutes timeout (increased from 5)
             wait_count = 0
+            heartbeat_interval = 30  # Send heartbeat every 30 seconds
+            last_heartbeat = 0
+            
+            print(f"📡 [SSE] Starting stream for job {job_id}")
             
             while wait_count < max_wait:
                 try:
-                    # Check for new events for this job
+                    current_time = time.time()
+                    
+                    # Send heartbeat để keep connection alive
+                    if current_time - last_heartbeat > heartbeat_interval:
+                        heartbeat_data = {
+                            'type': 'heartbeat',
+                            'job_id': job_id,
+                            'timestamp': datetime.now().isoformat(),
+                            'alive': True
+                        }
+                        yield f"data: {json.dumps(heartbeat_data)}\n\n"
+                        last_heartbeat = current_time
+                        print(f"💓 [SSE] Heartbeat sent for job {job_id}")
+                    
+                    # Check for new events cho job này
                     events = app.video_progress_store.get(job_id, [])
                     
                     if len(events) > last_event_index:
-                        # Send new events
+                        print(f"📡 [SSE] Found {len(events) - last_event_index} new events for job {job_id}")
+                        
+                        # Send tất cả events mới
                         for i in range(last_event_index, len(events)):
                             event_data = events[i]
+                            print(f"📡 [SSE] Sending event: {event_data.get('step', 'unknown')}")
                             yield f"data: {json.dumps(event_data)}\n\n"
                             
-                            # If completed or failed, stop streaming
+                            # Nếu completed hoặc failed, gửi final event và stop
                             if event_data.get('step') in ['completed', 'failed']:
+                                print(f"📡 [SSE] Job {job_id} finished with step: {event_data.get('step')}")
+                                
+                                # Send final goodbye message
+                                final_message = {
+                                    'type': 'stream_end',
+                                    'job_id': job_id,
+                                    'final_step': event_data.get('step'),
+                                    'timestamp': datetime.now().isoformat()
+                                }
+                                yield f"data: {json.dumps(final_message)}\n\n"
+                                
+                                # Cleanup - xóa events sau khi hoàn thành để tiết kiệm memory
+                                try:
+                                    if job_id in app.video_progress_store:
+                                        del app.video_progress_store[job_id]
+                                        print(f"🧹 [SSE] Cleaned up events for completed job {job_id}")
+                                except Exception as cleanup_error:
+                                    print(f"⚠️ [SSE] Cleanup error: {cleanup_error}")
+                                
                                 return
                         
                         last_event_index = len(events)
                     
-                    time.sleep(1)  # Check every second
-                    wait_count += 1
+                    # Short sleep to avoid busy waiting
+                    time.sleep(0.5)  # Check twice per second for responsiveness
+                    wait_count += 0.5
                     
+                except GeneratorExit:
+                    print(f"🔌 [SSE] Client disconnected from job {job_id}")
+                    break
                 except Exception as e:
-                    print(f"❌ [SSE] Error in progress stream: {str(e)}")
-                    yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+                    print(f"❌ [SSE] Error in progress stream for job {job_id}: {str(e)}")
+                    error_data = {
+                        'type': 'error',
+                        'job_id': job_id,
+                        'message': str(e),
+                        'timestamp': datetime.now().isoformat()
+                    }
+                    yield f"data: {json.dumps(error_data)}\n\n"
                     break
             
-            # Timeout
-            yield f"data: {json.dumps({'type': 'timeout', 'job_id': job_id})}\n\n"
+            # Timeout reached
+            print(f"⏰ [SSE] Timeout reached for job {job_id}")
+            timeout_data = {
+                'type': 'timeout',
+                'job_id': job_id,
+                'message': f'Không nhận được cập nhật trong {max_wait//60} phút',
+                'timestamp': datetime.now().isoformat()
+            }
+            yield f"data: {json.dumps(timeout_data)}\n\n"
         
+        # Enhanced response headers for better SSE support
         response = Response(
             generate_progress_events(),
             mimetype='text/event-stream',
             headers={
-                'Cache-Control': 'no-cache',
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache',
+                'Expires': '0',
                 'Connection': 'keep-alive',
                 'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Headers': 'Cache-Control'
+                'Access-Control-Allow-Headers': 'Cache-Control, Last-Event-ID',
+                'Access-Control-Allow-Methods': 'GET',
+                'Access-Control-Expose-Headers': 'Last-Event-ID',
+                'X-Accel-Buffering': 'no'  # Disable nginx buffering
             }
         )
         return response
+
+    @app.route('/api/video-progress/<job_id>/status')
+    def video_job_status(job_id):
+        """
+        Kiểm tra trạng thái của video job mà không cần SSE stream
+        """
+        try:
+            # Initialize progress store nếu chưa có
+            if not hasattr(app, 'video_progress_store'):
+                from collections import defaultdict
+                app.video_progress_store = defaultdict(list)
+            
+            events = app.video_progress_store.get(job_id, [])
+            
+            if not events:
+                return jsonify({
+                    'success': False,
+                    'job_id': job_id,
+                    'status': 'not_found',
+                    'message': 'Job không tồn tại hoặc chưa bắt đầu'
+                }), 404
+            
+            # Lấy event cuối cùng để xác định trạng thái
+            latest_event = events[-1] if events else None
+            
+            status_info = {
+                'success': True,
+                'job_id': job_id,
+                'status': latest_event.get('step', 'unknown') if latest_event else 'unknown',
+                'progress': latest_event.get('progress', 0) if latest_event else 0,
+                'message': latest_event.get('message', '') if latest_event else '',
+                'total_events': len(events),
+                'last_update': latest_event.get('timestamp', '') if latest_event else '',
+                'is_completed': latest_event.get('step') in ['completed', 'failed'] if latest_event else False
+            }
+            
+            # Thêm thông tin video nếu completed
+            if latest_event and latest_event.get('step') == 'completed':
+                event_data = latest_event.get('data', {})
+                if event_data.get('video_id'):
+                    status_info['video_id'] = event_data['video_id']
+                    status_info['video_url'] = f"/api/videos/{event_data['video_id']}/file"
+            
+            return jsonify(status_info)
+            
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'job_id': job_id,
+                'status': 'error',
+                'message': f'Lỗi server: {str(e)}'
+            }), 500
+
+    @app.route('/api/video-progress/cleanup', methods=['POST'])
+    @csrf.exempt
+    def cleanup_old_progress():
+        """
+        Cleanup old progress events để tiết kiệm memory
+        """
+        try:
+            if not hasattr(app, 'video_progress_store'):
+                return jsonify({
+                    'success': True,
+                    'message': 'Không có progress store nào để cleanup',
+                    'cleaned_jobs': 0
+                })
+            
+            # Tìm và xóa các jobs đã completed/failed cũ hơn 1 giờ
+            from datetime import datetime, timedelta
+            import json
+            
+            now = datetime.now()
+            cutoff_time = now - timedelta(hours=1)
+            jobs_to_remove = []
+            
+            for job_id, events in app.video_progress_store.items():
+                if events:
+                    latest_event = events[-1]
+                    if latest_event.get('step') in ['completed', 'failed']:
+                        try:
+                            event_time = datetime.fromisoformat(latest_event.get('timestamp', ''))
+                            if event_time < cutoff_time:
+                                jobs_to_remove.append(job_id)
+                        except:
+                            # Nếu không parse được timestamp, coi như cũ
+                            jobs_to_remove.append(job_id)
+            
+            # Xóa các jobs cũ
+            for job_id in jobs_to_remove:
+                del app.video_progress_store[job_id]
+            
+            return jsonify({
+                'success': True,
+                'message': f'Đã cleanup {len(jobs_to_remove)} jobs cũ',
+                'cleaned_jobs': len(jobs_to_remove),
+                'remaining_jobs': len(app.video_progress_store)
+            })
+            
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'message': f'Lỗi cleanup: {str(e)}'
+            }), 500
 
     @app.route('/api/chat/create-video', methods=['POST'])
     @csrf.exempt
@@ -639,8 +807,6 @@ def register_routes(app, socketio=None):
                         composition=composition,
                         background=background,
                         voice=voice,
-                        socketio=None,  # Không sử dụng SocketIO nữa
-                        session_id="",  # Không cần session_id cho SSE
                         job_id=job_id,
                         app_instance=app  # Truyền app instance từ route context
                     )

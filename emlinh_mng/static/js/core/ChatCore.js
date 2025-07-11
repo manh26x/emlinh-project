@@ -99,34 +99,130 @@ class ChatCore {
         // Hiển thị message đầu tiên
         this.uiManager.addAIMessage(message);
         
-        // Bắt đầu video creation với realtime updates
+        // Bắt đầu video creation với realtime updates qua SSE
         try {
             const response = await fetch('/api/chat/create-video', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
-                    ...video_request,
-                    session_id: this.sessionManager.getSessionId()
-                })
+                body: JSON.stringify(video_request)
             });
             
             const result = await response.json();
             
             if (result.success) {
-                console.log('✅ Video creation initiated with job_id:', result.job_id);
-                // Realtime updates sẽ được xử lý bởi SocketIO listeners
+                console.log('✅ [ChatCore] Video creation initiated with job_id:', result.job_id);
+                
+                // Sử dụng VideoManager để handle SSE stream
+                if (window.videoManager) {
+                    console.log('📺 [ChatCore] Starting SSE stream via VideoManager');
+                    window.videoManager.currentVideoJob = result.job_id;
+                    window.videoManager.startProgressStream(result.job_id);
+                    
+                    // Hiển thị typing indicator với initial message
+                    this.uiManager.showTypingIndicator('🎬 Đang tạo video... Vui lòng chờ trong giây lát');
+                } else {
+                    console.warn('⚠️ [ChatCore] VideoManager not available, using fallback');
+                    this.uiManager.addAIMessage('🎬 Video đang được tạo, vui lòng chờ trong giây lát...');
+                    
+                    // Fallback: Check status periodically
+                    this.startVideoStatusPolling(result.job_id);
+                }
+                
             } else {
                 this.notificationManager.showError('❌ Lỗi khởi tạo tạo video: ' + result.message);
                 this.uiManager.addAIMessage('❌ Có lỗi xảy ra khi tạo video: ' + result.message);
             }
             
         } catch (error) {
-            console.error('Video creation error:', error);
+            console.error('❌ [ChatCore] Video creation error:', error);
             this.notificationManager.showError('❌ Lỗi kết nối khi tạo video');
             this.uiManager.addAIMessage('❌ Lỗi kết nối khi tạo video: ' + error.message);
         }
+    }
+    
+    startVideoStatusPolling(jobId) {
+        """
+        Fallback polling method nếu SSE không hoạt động
+        """
+        console.log('🔄 [ChatCore] Starting fallback status polling for job:', jobId);
+        
+        const pollInterval = 3000; // 3 seconds
+        const maxAttempts = 120; // 6 minutes total
+        let attempts = 0;
+        
+        const poll = async () => {
+            try {
+                attempts++;
+                console.log(`🔄 [ChatCore] Polling attempt ${attempts}/${maxAttempts} for job:`, jobId);
+                
+                const response = await fetch(`/api/video-progress/${jobId}/status`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    console.log('📊 [ChatCore] Job status:', data.status, 'Progress:', data.progress + '%');
+                    
+                    // Cập nhật progress message
+                    this.uiManager.updateTypingIndicator(
+                        `🎬 Đang tạo video... (${data.progress}%) - ${data.message}`,
+                        data.progress
+                    );
+                    
+                    // Kiểm tra nếu hoàn thành
+                    if (data.is_completed) {
+                        this.uiManager.hideTypingIndicator();
+                        
+                        if (data.status === 'completed') {
+                            this.notificationManager.showSuccess('🎬 Video được tạo thành công!');
+                            
+                            let message = '🎉 **Video đã được tạo thành công!**';
+                            if (data.video_id) {
+                                message += `\n\n🆔 **Video ID:** ${data.video_id}`;
+                                message += `\n📺 **Xem video:** [Tại đây](${data.video_url})`;
+                            }
+                            this.uiManager.addAIMessage(message);
+                            
+                        } else if (data.status === 'failed') {
+                            this.notificationManager.showError('❌ Lỗi tạo video');
+                            this.uiManager.addAIMessage('❌ **Lỗi tạo video:** ' + data.message);
+                        }
+                        
+                        return; // Stop polling
+                    }
+                    
+                    // Nếu chưa hoàn thành, tiếp tục polling
+                    if (attempts < maxAttempts) {
+                        setTimeout(poll, pollInterval);
+                    } else {
+                        console.warn('⏰ [ChatCore] Polling timeout for job:', jobId);
+                        this.uiManager.hideTypingIndicator();
+                        this.uiManager.addAIMessage('⏰ **Timeout:** Quá trình tạo video mất quá lâu. Vui lòng thử lại.');
+                    }
+                    
+                } else {
+                    console.error('❌ [ChatCore] Status check failed:', data.message);
+                    if (attempts < maxAttempts) {
+                        setTimeout(poll, pollInterval);
+                    } else {
+                        this.uiManager.hideTypingIndicator();
+                        this.uiManager.addAIMessage('❌ **Lỗi:** Không thể kiểm tra trạng thái video. Vui lòng thử lại.');
+                    }
+                }
+                
+            } catch (error) {
+                console.error('❌ [ChatCore] Polling error:', error);
+                if (attempts < maxAttempts) {
+                    setTimeout(poll, pollInterval);
+                } else {
+                    this.uiManager.hideTypingIndicator();
+                    this.uiManager.addAIMessage('❌ **Lỗi kết nối:** Không thể kiểm tra trạng thái video.');
+                }
+            }
+        };
+        
+        // Start polling
+        poll();
     }
     
     createVideoDisplayHTML(video) {

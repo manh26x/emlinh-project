@@ -63,7 +63,7 @@ class FlowService:
                 app_context = None
             except RuntimeError:
                 from ..app.app import create_app
-                app, _ = create_app()  # create_app returns (app, socketio)
+                app = create_app()  # create_app returns app only
                 app_context = app.app_context()
                 app_context.push()
             

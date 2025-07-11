@@ -1,6 +1,6 @@
 from flask import Flask, request
 from src.app.config import config
-from src.app.extensions import db, csrf, socketio
+from src.app.extensions import db, csrf
 import os
 
 def create_app(config_name=None):
@@ -19,7 +19,6 @@ def create_app(config_name=None):
     # Initialize extensions with app
     db.init_app(app)
     csrf.init_app(app)
-    socketio.init_app(app)
     
     # Import models first, then create database tables
     import src.app.models
@@ -30,46 +29,7 @@ def create_app(config_name=None):
     
     # Register routes
     from src.app.routes import register_routes
-    register_routes(app, socketio)
+    register_routes(app)
     
-    # Register SocketIO events
-    register_socketio_events()
-    
-    return app, socketio
+    return app
 
-def register_socketio_events():
-    """Register SocketIO event handlers"""
-    
-    @socketio.on('connect')
-    def handle_connect():
-        print(f'🔌 [SOCKETIO] Client connected - SID: {request.sid}')
-        print(f'🔌 [SOCKETIO] Client address: {request.remote_addr}')
-    
-    @socketio.on('disconnect')
-    def handle_disconnect():
-        print(f'🔌 [SOCKETIO] Client disconnected - SID: {request.sid}')
-        print(f'🔌 [SOCKETIO] Client address: {request.remote_addr}')
-    
-    @socketio.on('join_session')
-    def handle_join_session(data):
-        """Join a session room for receiving updates"""
-        session_id = data.get('session_id')
-        if session_id:
-            from flask_socketio import join_room
-            join_room(session_id)
-            print(f"✅ [SOCKETIO] Client {request.sid} joined session: {session_id}")
-            print(f"📋 [SOCKETIO] Session data: {data}")
-        else:
-            print(f"❌ [SOCKETIO] Client {request.sid} attempted to join session without session_id")
-            print(f"📋 [SOCKETIO] Received data: {data}")
-    
-    @socketio.on('leave_session')
-    def handle_leave_session(data):
-        """Leave a session room"""
-        session_id = data.get('session_id')
-        if session_id:
-            from flask_socketio import leave_room
-            leave_room(session_id)
-            print(f"🚪 [SOCKETIO] Client {request.sid} left session: {session_id}")
-        else:
-            print(f"❌ [SOCKETIO] Client {request.sid} attempted to leave session without session_id")

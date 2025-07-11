@@ -9,6 +9,14 @@ class VideoManager {
         this.currentVideoJob = null;
         this.currentEventSource = null; // SSE connection
         
+        // Auto-reconnection properties
+        this.currentJobId = null;
+        this.reconnectAttempts = 0;
+        this.maxReconnectAttempts = 5;
+        this.reconnectDelay = 1000;
+        this.lastEventId = null;
+        this.isStreamActive = false;
+        
         this.bindEvents();
         
         console.log('🎬 VideoManager initialized with session:', this.sessionId);
@@ -19,7 +27,15 @@ class VideoManager {
     }
     
     startProgressStream(jobId) {
-        console.log('📡 [VideoManager] Starting SSE stream for job:', jobId);
+        console.log('📡 [VideoManager] Starting enhanced SSE stream for job:', jobId);
+        
+        // Initialize reconnection parameters
+        this.currentJobId = jobId;
+        this.reconnectAttempts = 0;
+        this.maxReconnectAttempts = 5;
+        this.reconnectDelay = 1000; // Start with 1 second
+        this.lastEventId = null;
+        this.isStreamActive = true;
         
         // Close existing stream if any
         if (this.currentEventSource) {
@@ -27,48 +43,196 @@ class VideoManager {
             this.currentEventSource.close();
         }
         
-        // Create new SSE connection
-        this.currentEventSource = new EventSource(`/api/video-progress/${jobId}`);
+        this.connectEventSource(jobId);
+    }
+    
+    connectEventSource(jobId, isReconnect = false) {
+        if (!this.isStreamActive) {
+            console.log('📡 [VideoManager] Stream was stopped, aborting connection');
+            return;
+        }
         
-        this.currentEventSource.onopen = () => {
-            console.log('📡 [VideoManager] SSE connection opened for job:', jobId);
-        };
-        
-        this.currentEventSource.onmessage = (event) => {
-            try {
-                const data = JSON.parse(event.data);
-                console.log('📺 [VideoManager] SSE event received:', data);
-                
-                if (data.type === 'connected') {
-                    console.log('📡 [VideoManager] SSE connected to job:', data.job_id);
-                } else if (data.type === 'error') {
-                    console.error('❌ [VideoManager] SSE error:', data.message);
-                    this.uiManager.addAIMessage('❌ **Lỗi kết nối realtime:** ' + data.message);
-                } else if (data.type === 'timeout') {
-                    console.warn('⏰ [VideoManager] SSE timeout for job:', data.job_id);
-                    this.uiManager.addAIMessage('⏰ **Timeout:** Không nhận được cập nhật trong 5 phút');
-                } else {
-                    // Regular progress event
-                    this.handleVideoProgress(data);
+        try {
+            // Build URL with Last-Event-ID if reconnecting
+            let url = `/api/video-progress/${jobId}`;
+            if (isReconnect && this.lastEventId) {
+                url += `?lastEventId=${this.lastEventId}`;
+            }
+            
+            console.log(`📡 [VideoManager] ${isReconnect ? 'Reconnecting to' : 'Connecting to'} SSE: ${url}`);
+            
+            this.currentEventSource = new EventSource(url);
+            
+            this.currentEventSource.onopen = () => {
+                console.log('📡 [VideoManager] SSE connection opened for job:', jobId);
+                if (isReconnect) {
+                    this.reconnectAttempts = 0; // Reset on successful reconnection
+                    this.reconnectDelay = 1000; // Reset delay
+                    console.log('✅ [VideoManager] Successfully reconnected to SSE stream');
                 }
-            } catch (e) {
-                console.error('❌ [VideoManager] Error parsing SSE data:', e);
-            }
-        };
+            };
+            
+            this.currentEventSource.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    console.log('📺 [VideoManager] SSE event received:', data);
+                    
+                    // Store event ID for reconnection
+                    if (event.lastEventId) {
+                        this.lastEventId = event.lastEventId;
+                    }
+                    
+                    this.handleSSEEvent(data, jobId);
+                    
+                } catch (e) {
+                    console.error('❌ [VideoManager] Error parsing SSE data:', e);
+                }
+            };
+            
+            this.currentEventSource.onerror = (error) => {
+                console.error('❌ [VideoManager] SSE error:', error);
+                
+                if (this.currentEventSource.readyState === EventSource.CLOSED) {
+                    console.log('📡 [VideoManager] SSE connection closed');
+                    this.attemptReconnection(jobId);
+                } else if (this.currentEventSource.readyState === EventSource.CONNECTING) {
+                    console.log('📡 [VideoManager] SSE connection in connecting state');
+                }
+            };
+            
+        } catch (error) {
+            console.error('❌ [VideoManager] Error creating EventSource:', error);
+            this.attemptReconnection(jobId);
+        }
+    }
+    
+    handleSSEEvent(data, jobId) {
+        const { type } = data;
         
-        this.currentEventSource.onerror = (error) => {
-            console.error('❌ [VideoManager] SSE error:', error);
-            if (this.currentEventSource.readyState === EventSource.CLOSED) {
-                console.log('📡 [VideoManager] SSE connection closed');
+        switch (type) {
+            case 'connected':
+                console.log('📡 [VideoManager] SSE connected to job:', data.job_id);
+                break;
+                
+            case 'heartbeat':
+                console.log('💓 [VideoManager] Received heartbeat for job:', data.job_id);
+                break;
+                
+            case 'error':
+                console.error('❌ [VideoManager] SSE error:', data.message);
+                this.uiManager.addAIMessage('❌ **Lỗi kết nối realtime:** ' + data.message);
+                break;
+                
+            case 'timeout':
+                console.warn('⏰ [VideoManager] SSE timeout for job:', data.job_id);
+                this.uiManager.addAIMessage('⏰ **Timeout:** Không nhận được cập nhật trong 10 phút');
+                this.stopProgressStream();
+                break;
+                
+            case 'stream_end':
+                console.log('🏁 [VideoManager] Stream ended for job:', data.job_id, 'Final step:', data.final_step);
+                this.stopProgressStream();
+                break;
+                
+            default:
+                // Regular progress event
+                this.handleVideoProgress(data);
+                break;
+        }
+    }
+    
+    attemptReconnection(jobId) {
+        if (!this.isStreamActive) {
+            console.log('📡 [VideoManager] Stream was stopped, aborting reconnection');
+            return;
+        }
+        
+        if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+            console.error('❌ [VideoManager] Max reconnection attempts reached for job:', jobId);
+            this.uiManager.addAIMessage('❌ **Mất kết nối:** Không thể tái kết nối sau nhiều lần thử. Hãy reload trang và thử lại.');
+            this.stopProgressStream();
+            return;
+        }
+        
+        this.reconnectAttempts++;
+        console.log(`🔄 [VideoManager] Attempting reconnection ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${this.reconnectDelay}ms`);
+        
+        // Show reconnection message to user
+        this.uiManager.addAIMessage(`🔄 **Đang tái kết nối...** (Lần thử ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+        
+        setTimeout(() => {
+            if (this.isStreamActive) {
+                this.connectEventSource(jobId, true);
             }
-        };
+        }, this.reconnectDelay);
+        
+        // Exponential backoff with jitter
+        this.reconnectDelay = Math.min(this.reconnectDelay * 2, 30000) + Math.random() * 1000;
     }
     
     stopProgressStream() {
+        console.log('📡 [VideoManager] Stopping SSE stream');
+        
+        // Mark stream as inactive to prevent reconnection
+        this.isStreamActive = false;
+        
         if (this.currentEventSource) {
-            console.log('📡 [VideoManager] Stopping SSE stream');
             this.currentEventSource.close();
             this.currentEventSource = null;
+        }
+        
+        // Reset reconnection parameters
+        this.reconnectAttempts = 0;
+        this.reconnectDelay = 1000;
+        this.lastEventId = null;
+        this.currentJobId = null;
+        
+        console.log('📡 [VideoManager] SSE stream stopped and cleaned up');
+    }
+    
+    async checkJobStatus(jobId) {
+        """
+        Fallback method để check job status nếu SSE fails
+        """
+        try {
+            console.log('🔍 [VideoManager] Checking job status for:', jobId);
+            
+            const response = await fetch(`/api/video-progress/${jobId}/status`);
+            const data = await response.json();
+            
+            if (data.success) {
+                console.log('🔍 [VideoManager] Job status:', data);
+                
+                // Nếu job đã completed/failed, hiển thị kết quả
+                if (data.is_completed) {
+                    if (data.status === 'completed') {
+                        this.notificationManager.showSuccess('🎬 Video được tạo thành công!');
+                        
+                        let message = '🎉 **Video đã được tạo thành công!**';
+                        if (data.video_id) {
+                            message += `\n\n🆔 **Video ID:** ${data.video_id}`;
+                            message += `\n📺 **Xem video:** [Tại đây](${data.video_url})`;
+                        }
+                        this.uiManager.addAIMessage(message);
+                        
+                    } else if (data.status === 'failed') {
+                        this.notificationManager.showError('❌ Video creation failed');
+                        this.uiManager.addAIMessage('❌ **Lỗi tạo video:** ' + data.message);
+                    }
+                    
+                    this.currentVideoJob = null;
+                    this.uiManager.hideTypingIndicator();
+                }
+                
+                return data;
+            } else {
+                console.warn('⚠️ [VideoManager] Job status check failed:', data.message);
+                return null;
+            }
+            
+        } catch (error) {
+            console.error('❌ [VideoManager] Error checking job status:', error);
+            return null;
         }
     }
 
