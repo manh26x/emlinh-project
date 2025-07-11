@@ -42,11 +42,13 @@ def register_socketio_events():
     
     @socketio.on('connect')
     def handle_connect():
-        print(f'Client connected - SID: {request.sid}')
+        print(f'🔌 [SOCKETIO] Client connected - SID: {request.sid}')
+        print(f'🔌 [SOCKETIO] Client address: {request.remote_addr}')
     
     @socketio.on('disconnect')
     def handle_disconnect():
-        print(f'Client disconnected - SID: {request.sid}')
+        print(f'🔌 [SOCKETIO] Client disconnected - SID: {request.sid}')
+        print(f'🔌 [SOCKETIO] Client address: {request.remote_addr}')
     
     @socketio.on('join_session')
     def handle_join_session(data):
@@ -55,9 +57,11 @@ def register_socketio_events():
         if session_id:
             from flask_socketio import join_room
             join_room(session_id)
-            print(f'Client {request.sid} joined session: {session_id}')
+            print(f"✅ [SOCKETIO] Client {request.sid} joined session: {session_id}")
+            print(f"📋 [SOCKETIO] Session data: {data}")
         else:
-            print(f'Client {request.sid} attempted to join session without session_id')
+            print(f"❌ [SOCKETIO] Client {request.sid} attempted to join session without session_id")
+            print(f"📋 [SOCKETIO] Received data: {data}")
     
     @socketio.on('leave_session')
     def handle_leave_session(data):
@@ -66,4 +70,6 @@ def register_socketio_events():
         if session_id:
             from flask_socketio import leave_room
             leave_room(session_id)
-            print(f'Client {request.sid} left session: {session_id}')
+            print(f"🚪 [SOCKETIO] Client {request.sid} left session: {session_id}")
+        else:
+            print(f"❌ [SOCKETIO] Client {request.sid} attempted to leave session without session_id")

@@ -693,13 +693,23 @@ def create_video_from_topic_realtime(
     def emit_progress(step: str, message: str, progress: int, data: dict = None):
         """Helper function để emit progress updates"""
         if socketio:
-            socketio.emit('video_progress', {
+            event_data = {
                 'job_id': job_id,
                 'step': step,
                 'message': message,
                 'progress': progress,
                 'data': data or {}
-            }, room=session_id)
+            }
+            print(f"📡 [EMIT] Sending video_progress to room '{session_id}': {step} ({progress}%)")
+            print(f"📡 [EMIT] Event data: {event_data}")
+            
+            socketio.emit('video_progress', event_data, room=session_id)
+            
+            # Also emit to all connected clients as backup (for debugging)
+            print(f"📡 [EMIT] Also broadcasting to all clients for debugging")
+            socketio.emit('video_progress', event_data)
+        else:
+            print(f"⚠️ [EMIT] No socketio instance - cannot emit progress for: {step}")
     
     try:
         # Step 1: Khởi tạo flow
