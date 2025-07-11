@@ -53,30 +53,86 @@ class VideoManager {
     handleVideoProgress(data) {
         console.log('📺 Video progress:', data);
         
-        if (!this.currentVideoJob || this.currentVideoJob !== data.job_id) {
-            return;
+        // Cho phép hiển thị progress cho tất cả video jobs (không check quá nghiêm ngặt)
+        // Chỉ check nếu có currentVideoJob và không khớp thì log để debug
+        if (this.currentVideoJob && this.currentVideoJob !== data.job_id) {
+            console.log('📺 Received progress for different job:', data.job_id, 'current:', this.currentVideoJob);
+            // Vẫn hiển thị progress cho user để đảm bảo họ thấy được tiến trình
         }
         
         const { step, message, progress, data: stepData } = data;
         
-        // Cập nhật UI với progress
+        // Hiển thị messages cho các bước quan trọng
+        this.showStepMessage(step, message, progress, stepData);
+        
+        // Cập nhật typing indicator với progress hiện tại
         this.updateVideoProgress(step, message, progress, stepData);
         
-        // Nếu hoàn thành hoặc lỗi, clear current job
+        // Nếu hoàn thành hoặc lỗi, clear current job và hiển thị kết quả cuối
         if (step === 'completed' || step === 'failed') {
             this.currentVideoJob = null;
             this.uiManager.hideTypingIndicator();
             
             if (step === 'completed') {
                 this.notificationManager.showSuccess('🎬 Video được tạo thành công!');
-                // Hiển thị kết quả video
+                
+                // Hiển thị message hoàn thành với link video
+                let completionMessage = '🎉 **Video đã được tạo thành công!**';
                 if (stepData && stepData.video_id) {
-                    this.uiManager.addAIMessage(`Video đã được tạo thành công! <a href="/videos/${stepData.video_id}" target="_blank">Xem video</a>`);
+                    completionMessage += `\n\n🆔 **Video ID:** ${stepData.video_id}`;
+                    completionMessage += `\n📺 **Xem video:** [Tại đây](/videos/${stepData.video_id})`;
+                    
+                    if (stepData.actual_duration) {
+                        completionMessage += `\n⏱️ **Thời lượng thực tế:** ${stepData.actual_duration}s`;
+                    }
+                    if (stepData.topic) {
+                        completionMessage += `\n📝 **Chủ đề:** ${stepData.topic}`;
+                    }
                 }
+                
+                this.uiManager.addAIMessage(completionMessage);
+                
             } else {
                 this.notificationManager.showError('❌ Lỗi tạo video: ' + message);
-                this.uiManager.addAIMessage('Xin lỗi, có lỗi xảy ra khi tạo video: ' + message);
+                this.uiManager.addAIMessage('❌ **Xin lỗi, có lỗi xảy ra khi tạo video:**\n' + message);
             }
+        }
+    }
+    
+    showStepMessage(step, message, progress, stepData) {
+        // Chỉ hiển thị message cho các bước quan trọng để tránh spam
+        const importantSteps = [
+            'script_completed',
+            'record_created', 
+            'audio_completed',
+            'video_rendering',
+            'completed',
+            'failed'
+        ];
+        
+        if (importantSteps.includes(step)) {
+            let stepMessage = this.formatProgressMessage(step, message, progress, stepData);
+            
+            // Thêm thông tin chi tiết cho các bước quan trọng
+            if (step === 'script_completed' && stepData && stepData.script_preview) {
+                stepMessage += `\n\n📄 **Nội dung script đã tạo:**\n_"${stepData.script_preview}"_`;
+            }
+            
+            if (step === 'audio_completed' && stepData) {
+                if (stepData.actual_duration) {
+                    stepMessage += `\n⏱️ **Thời lượng thực tế:** ${stepData.actual_duration}s`;
+                }
+                if (stepData.original_duration) {
+                    stepMessage += ` (dự kiến: ${stepData.original_duration}s)`;
+                }
+            }
+            
+            if (step === 'record_created' && stepData && stepData.video_id) {
+                stepMessage += `\n🆔 **Video ID:** ${stepData.video_id}`;
+            }
+            
+            // Thêm AI message để user thấy rõ tiến trình
+            this.uiManager.addAIMessage(stepMessage);
         }
     }
     
@@ -84,8 +140,32 @@ class VideoManager {
         // Tạo progress message với emoji và format đẹp
         let progressMessage = this.formatProgressMessage(step, message, progress, stepData);
         
-        // Cập nhật typing indicator với progress
+        // Luôn hiển thị typing indicator với progress để user thấy tiến trình
+        // Thêm thông tin step hiện tại
+        progressMessage += `\n\n🔄 **Bước hiện tại:** ${this.getStepDescription(step)}`;
+        
+        // Cập nhật typing indicator với progress bar
         this.uiManager.updateTypingIndicator(progressMessage, progress);
+        this.uiManager.scrollToBottom();
+    }
+    
+    getStepDescription(step) {
+        const stepDescriptions = {
+            'request_received': 'Nhận yêu cầu tạo video',
+            'initializing': 'Khởi tạo hệ thống',
+            'generating_script': 'Tạo nội dung bài thuyết trình',
+            'script_completed': 'Hoàn thành nội dung',
+            'creating_record': 'Tạo bản ghi database',
+            'record_created': 'Lưu thông tin video',
+            'generating_audio': 'Tạo file âm thanh',
+            'audio_completed': 'Hoàn thành âm thanh',
+            'rendering_video': 'Bắt đầu render video',
+            'video_rendering': 'Đang render video',
+            'finalizing': 'Hoàn thiện video',
+            'completed': 'Hoàn thành tất cả',
+            'failed': 'Gặp lỗi'
+        };
+        return stepDescriptions[step] || step;
     }
     
     formatProgressMessage(step, message, progress, stepData) {
@@ -106,19 +186,35 @@ class VideoManager {
         };
         
         const emoji = stepEmojis[step] || '⚙️';
-        let formattedMessage = `${emoji} ${message}`;
+        let formattedMessage = `${emoji} **${message}**`;
         
+        // Thêm progress percentage với visual bar
         if (progress > 0) {
-            formattedMessage += ` (${progress}%)`;
+            const progressBarLength = 20;
+            const filledLength = Math.round((progress / 100) * progressBarLength);
+            const emptyLength = progressBarLength - filledLength;
+            const progressBar = '█'.repeat(filledLength) + '░'.repeat(emptyLength);
+            
+            formattedMessage += `\n\n📊 **Tiến độ:** ${progress}%`;
+            formattedMessage += `\n\`${progressBar}\` ${progress}%`;
         }
         
         // Thêm thông tin chi tiết nếu có
         if (stepData) {
-            if (stepData.script_preview) {
-                formattedMessage += `\n📄 Nội dung: ${stepData.script_preview}`;
+            if (stepData.topic) {
+                formattedMessage += `\n🎯 **Chủ đề:** ${stepData.topic}`;
             }
-            if (stepData.audio_file) {
-                formattedMessage += `\n🎵 File âm thanh: ${stepData.audio_file.split('/').pop()}`;
+            if (stepData.composition) {
+                formattedMessage += `\n🎨 **Composition:** ${stepData.composition}`;
+            }
+            if (stepData.background) {
+                formattedMessage += `\n🖼️ **Background:** ${stepData.background}`;
+            }
+            if (stepData.voice) {
+                formattedMessage += `\n🗣️ **Giọng đọc:** ${stepData.voice}`;
+            }
+            if (stepData.actual_duration && stepData.original_duration) {
+                formattedMessage += `\n⏱️ **Thời lượng:** ${stepData.actual_duration}s (dự kiến: ${stepData.original_duration}s)`;
             }
         }
         
