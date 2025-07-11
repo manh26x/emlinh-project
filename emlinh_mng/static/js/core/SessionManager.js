@@ -21,6 +21,11 @@ class SessionManager {
         if (this.sessionIdDisplay) {
             this.sessionIdDisplay.textContent = this.sessionId;
         }
+        
+        // Join session with SocketManager if available
+        if (window.socketManager) {
+            window.socketManager.joinSession(this.sessionId);
+        }
     }
     
     getSessionId() {
@@ -28,6 +33,11 @@ class SessionManager {
     }
     
     startNewSession() {
+        // Leave current session if exists
+        if (this.sessionId && window.socketManager) {
+            window.socketManager.leaveSession(this.sessionId);
+        }
+        
         this.generateSessionId();
         
         // Dispatch event for other modules to handle

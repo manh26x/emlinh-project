@@ -17,22 +17,33 @@ class VideoManager {
     
     initializeSocketIO() {
         try {
-            this.socket = io();
-            
-            this.socket.on('connect', () => {
-                console.log('🔌 SocketIO connected');
-                // Join session room để nhận updates
-                this.socket.emit('join_session', { session_id: this.sessionId });
-            });
-            
-            this.socket.on('disconnect', () => {
-                console.log('🔌 SocketIO disconnected');
-            });
-            
-            // Listen cho video progress updates
-            this.socket.on('video_progress', (data) => {
-                this.handleVideoProgress(data);
-            });
+            // Use global SocketManager instead of creating new connection
+            if (window.socketManager) {
+                console.log('🔌 Using global SocketManager');
+                
+                // Join session when connected
+                if (window.socketManager.isSocketConnected()) {
+                    window.socketManager.joinSession(this.sessionId);
+                } else {
+                    // Wait for connection
+                    window.socketManager.addEventListener('connect', () => {
+                        window.socketManager.joinSession(this.sessionId);
+                    });
+                }
+                
+                // Listen for video progress events
+                window.socketManager.addEventListener('video_progress', (data) => {
+                    this.handleVideoProgress(data);
+                });
+                
+                // Listen for disconnect events
+                window.socketManager.addEventListener('disconnect', (data) => {
+                    console.log('🔌 VideoManager: Socket disconnected:', data.reason);
+                });
+                
+            } else {
+                console.error('❌ SocketManager not available');
+            }
             
         } catch (error) {
             console.error('❌ Failed to initialize SocketIO:', error);

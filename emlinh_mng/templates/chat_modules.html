@@ -1,5 +1,8 @@
 <!-- Chat Modules - Modular JavaScript Architecture -->
 
+<!-- Socket Manager (must be loaded first) -->
+<script src="{{ url_for('static', filename='js/core/SocketManager.js') }}"></script>
+
 <!-- Core Modules -->
 <script src="{{ url_for('static', filename='js/core/SessionManager.js') }}"></script>
 <script src="{{ url_for('static', filename='js/core/NotificationManager.js') }}"></script>
@@ -19,6 +22,13 @@
 <!-- Initialize when all modules are loaded -->
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+    // Wait for SocketManager to be ready
+    if (window.socketManager) {
+        console.log('🔌 SocketManager is ready');
+    } else {
+        console.warn('⚠️ SocketManager not found, creating fallback');
+    }
+    
     // Initialize chat manager globally
     window.chatManager = new ChatManager();
     

@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, request
 from src.app.config import config
 from src.app.extensions import db, csrf, socketio
 import os
@@ -42,11 +42,11 @@ def register_socketio_events():
     
     @socketio.on('connect')
     def handle_connect():
-        print('Client connected')
+        print(f'Client connected - SID: {request.sid}')
     
     @socketio.on('disconnect')
     def handle_disconnect():
-        print('Client disconnected')
+        print(f'Client disconnected - SID: {request.sid}')
     
     @socketio.on('join_session')
     def handle_join_session(data):
@@ -55,4 +55,15 @@ def register_socketio_events():
         if session_id:
             from flask_socketio import join_room
             join_room(session_id)
-            print(f'Client joined session: {session_id}')
+            print(f'Client {request.sid} joined session: {session_id}')
+        else:
+            print(f'Client {request.sid} attempted to join session without session_id')
+    
+    @socketio.on('leave_session')
+    def handle_leave_session(data):
+        """Leave a session room"""
+        session_id = data.get('session_id')
+        if session_id:
+            from flask_socketio import leave_room
+            leave_room(session_id)
+            print(f'Client {request.sid} left session: {session_id}')
