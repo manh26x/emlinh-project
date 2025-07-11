@@ -700,14 +700,19 @@ def create_video_from_topic_realtime(
                 'progress': progress,
                 'data': data or {}
             }
-            print(f"📡 [EMIT] Sending video_progress to room '{session_id}': {step} ({progress}%)")
+            print(f"📡 [EMIT] Sending video_progress: {step} ({progress}%)")
+            print(f"📡 [EMIT] Job ID: {job_id}, Session ID: {session_id}")
             print(f"📡 [EMIT] Event data: {event_data}")
             
-            socketio.emit('video_progress', event_data, room=session_id)
-            
-            # Also emit to all connected clients as backup (for debugging)
-            print(f"📡 [EMIT] Also broadcasting to all clients for debugging")
+            # TEMP FIX: Emit broadcast để đảm bảo frontend nhận được
+            # TODO: Fix room management sau khi debug xong
+            print(f"📡 [EMIT] Broadcasting to all clients")
             socketio.emit('video_progress', event_data)
+            
+            # Also try to emit to specific room (for proper clients)
+            if session_id:
+                print(f"📡 [EMIT] Also sending to room '{session_id}'")
+                socketio.emit('video_progress', event_data, room=session_id)
         else:
             print(f"⚠️ [EMIT] No socketio instance - cannot emit progress for: {step}")
     

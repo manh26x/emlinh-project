@@ -31,12 +31,13 @@ class SocketManager {
     
     setupEventHandlers() {
         this.socket.on('connect', () => {
-            console.log('🔌 SocketIO connected - SID:', this.socket.id);
+            console.log('🔌 [SocketManager] SocketIO connected - SID:', this.socket.id);
             this.isConnected = true;
             this.reconnectAttempts = 0;
             
             // Auto-join session if we have one
             if (this.sessionId) {
+                console.log('📋 [SocketManager] Auto-joining session:', this.sessionId);
                 this.joinSession(this.sessionId);
             }
             
@@ -45,7 +46,7 @@ class SocketManager {
         });
         
         this.socket.on('disconnect', (reason) => {
-            console.log('🔌 SocketIO disconnected - Reason:', reason);
+            console.log('🔌 [SocketManager] SocketIO disconnected - Reason:', reason);
             this.isConnected = false;
             
             // Notify listeners
@@ -59,37 +60,40 @@ class SocketManager {
                 // Client disconnected, try to reconnect with exponential backoff
                 this.reconnectAttempts++;
                 const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
-                console.log(`🔄 Attempting to reconnect in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+                console.log(`🔄 [SocketManager] Attempting to reconnect in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
                 
                 setTimeout(() => {
                     this.socket.connect();
                 }, delay);
             } else {
-                console.error('❌ Max reconnection attempts reached');
+                console.error('❌ [SocketManager] Max reconnection attempts reached');
             }
         });
         
         this.socket.on('connect_error', (error) => {
-            console.error('❌ SocketIO connection error:', error);
+            console.error('❌ [SocketManager] SocketIO connection error:', error);
             this.notifyListeners('connect_error', { error });
         });
         
         // Handle video progress events
         this.socket.on('video_progress', (data) => {
-            console.log('📺 Video progress received:', data);
+            console.log('📺 [SocketManager] Video progress received:', data);
+            console.log('📺 [SocketManager] Current session:', this.sessionId);
+            console.log('📺 [SocketManager] Socket ID:', this.socket.id);
             this.notifyListeners('video_progress', data);
         });
     }
     
     joinSession(sessionId) {
         if (!this.isConnected) {
-            console.warn('⚠️ Cannot join session: not connected');
+            console.warn('⚠️ [SocketManager] Cannot join session: not connected');
             return false;
         }
         
         this.sessionId = sessionId;
         this.socket.emit('join_session', { session_id: sessionId });
-        console.log('📋 Joining session:', sessionId);
+        console.log('📋 [SocketManager] Joining session:', sessionId);
+        console.log('📋 [SocketManager] Socket ID:', this.socket.id);
         return true;
     }
     
