@@ -11,6 +11,7 @@ import time
 import os
 import asyncio
 import json
+from datetime import datetime
 
 from .video_service import VideoService
 from .tts_service import TTSService
@@ -674,7 +675,7 @@ def create_video_from_topic_realtime(
     job_id: str = ""
 ) -> Dict[str, Any]:
     """
-    Hàm tạo video với realtime updates qua SocketIO
+    Hàm tạo video với realtime updates qua Server-Sent Events
     
     Args:
         topic: Chủ đề của video
@@ -682,43 +683,45 @@ def create_video_from_topic_realtime(
         composition: Loại composition
         background: Background scene
         voice: Giọng đọc TTS
-        socketio: SocketIO instance để gửi updates
-        session_id: Session ID để gửi updates
+        socketio: DEPRECATED - không sử dụng nữa
+        session_id: DEPRECATED - không cần cho SSE
         job_id: Job ID để tracking
         
     Returns:
         Dict chứa thông tin kết quả và trạng thái
     """
     
-    def emit_progress(step: str, message: str, progress: int, data: dict = None):
-        """Helper function để emit progress updates"""
-        if socketio:
+    def store_progress(step: str, message: str, progress: int, data: dict = None):
+        """Helper function để store progress events cho SSE"""
+        try:
+            from flask import current_app
+            
             event_data = {
                 'job_id': job_id,
                 'step': step,
                 'message': message,
                 'progress': progress,
-                'data': data or {}
+                'data': data or {},
+                'timestamp': datetime.now().isoformat()
             }
-            print(f"📡 [EMIT] Sending video_progress: {step} ({progress}%)")
-            print(f"📡 [EMIT] Job ID: {job_id}, Session ID: {session_id}")
-            print(f"📡 [EMIT] Event data: {event_data}")
             
-            # TEMP FIX: Emit broadcast để đảm bảo frontend nhận được
-            # TODO: Fix room management sau khi debug xong
-            print(f"📡 [EMIT] Broadcasting to all clients")
-            socketio.emit('video_progress', event_data)
+            print(f"📡 [SSE] Storing progress event: {step} ({progress}%)")
+            print(f"📡 [SSE] Job ID: {job_id}")
+            print(f"📡 [SSE] Event data: {event_data}")
             
-            # Also try to emit to specific room (for proper clients)
-            if session_id:
-                print(f"📡 [EMIT] Also sending to room '{session_id}'")
-                socketio.emit('video_progress', event_data, room=session_id)
-        else:
-            print(f"⚠️ [EMIT] No socketio instance - cannot emit progress for: {step}")
+            # Store event in app progress store
+            if not hasattr(current_app, 'video_progress_store'):
+                from collections import defaultdict
+                current_app.video_progress_store = defaultdict(list)
+            
+            current_app.video_progress_store[job_id].append(event_data)
+            
+        except Exception as e:
+            print(f"⚠️ [SSE] Error storing progress: {str(e)}")
     
     try:
         # Step 1: Khởi tạo flow
-        emit_progress('initializing', 'Đang khởi tạo quy trình tạo video...', 10)
+        store_progress('initializing', 'Đang khởi tạo quy trình tạo video...', 10)
         
         flow = VideoProductionFlow()
         flow.state.topic = topic
@@ -728,28 +731,28 @@ def create_video_from_topic_realtime(
         flow.state.voice = voice
         
         # Step 2: Bắt đầu tạo script
-        emit_progress('generating_script', 'Đang tạo bài thuyết trình...', 20)
+        store_progress('generating_script', 'Đang tạo bài thuyết trình...', 20)
         
         # Initialize production
         init_result = flow.initialize_production()
         
         # Generate script
         script_result = flow.generate_script(init_result)
-        emit_progress('script_completed', 
+        store_progress('script_completed', 
                      f'Đã hoàn thành bài thuyết trình có độ dài {len(script_result["script"])} ký tự',
                      35,
                      {'script_preview': script_result["script"][:200] + "..." if len(script_result["script"]) > 200 else script_result["script"]})
         
         # Step 3: Tạo database record
-        emit_progress('creating_record', 'Đang tạo bản ghi video trong database...', 40)
+        store_progress('creating_record', 'Đang tạo bản ghi video trong database...', 40)
         
         record_result = flow.create_database_record(script_result)
-        emit_progress('record_created', 
+        store_progress('record_created', 
                      f'Đã tạo bản ghi video với ID: {record_result["video_id"]}',
                      45)
         
         # Step 4: Tạo file âm thanh
-        emit_progress('generating_audio', 
+        store_progress('generating_audio', 
                      f'Đang tạo file âm thanh với giọng đọc {voice}...',
                      50)
         
@@ -759,7 +762,7 @@ def create_video_from_topic_realtime(
         actual_duration = tts_result.get('actual_duration', duration)
         actual_duration_str = f"{actual_duration:.1f}" if isinstance(actual_duration, float) else str(actual_duration)
         
-        emit_progress('audio_completed', 
+        store_progress('audio_completed', 
                      f'Đã tạo xong file âm thanh có thời lượng thực tế {actual_duration_str} giây với giọng đọc {voice}',
                      70,
                      {
@@ -769,7 +772,7 @@ def create_video_from_topic_realtime(
                      })
         
         # Step 5: Render video
-        emit_progress('rendering_video', 
+        store_progress('rendering_video', 
                      f'Đang render video có thời lượng thực tế {actual_duration_str} giây, background: {background}, composition: {composition}...',
                      75,
                      {
@@ -779,25 +782,25 @@ def create_video_from_topic_realtime(
                      })
         
         render_result = flow.start_video_render(tts_result)
-        emit_progress('video_rendering', 
+        store_progress('video_rendering', 
                      f'Video đang được render với composition {composition} và thời lượng {actual_duration_str}s...',
                      85)
         
         # Step 6: Finalize
-        emit_progress('finalizing', 'Đang hoàn thiện và lưu video...', 95)
+        store_progress('finalizing', 'Đang hoàn thiện và lưu video...', 95)
         
         final_result = flow.finalize_production(render_result)
         
         # Tạo summary với actual duration information
         summary = flow.get_production_summary()
         
-        # Emit final completion message với thông tin chi tiết
+        # Store final completion event với thông tin chi tiết
         if summary.get('success'):
             final_actual_duration = summary.get('actual_duration') or actual_duration
             final_duration_str = f"{final_actual_duration:.1f}" if isinstance(final_actual_duration, float) else str(final_actual_duration)
             
             completion_message = f'Video đã được tạo thành công! Thời lượng thực tế: {final_duration_str}s (dự kiến: {duration}s)'
-            emit_progress('completed', completion_message, 100, {
+            store_progress('completed', completion_message, 100, {
                 'video_id': summary.get('video_id'),
                 'actual_duration': final_actual_duration,
                 'original_duration': duration,
@@ -808,7 +811,7 @@ def create_video_from_topic_realtime(
         return summary
         
     except Exception as e:
-        emit_progress('error', f'Lỗi trong quá trình tạo video: {str(e)}', 0)
+        store_progress('failed', f'Lỗi trong quá trình tạo video: {str(e)}', 0)
         print(f"🚨 [REALTIME] Lỗi nghiêm trọng trong Flow: {str(e)}")
         return {
             "success": False,

@@ -7,56 +7,75 @@ class VideoManager {
         this.uiManager = uiManager;
         this.sessionId = this.generateSessionId();
         this.currentVideoJob = null;
-        this.initializeSocketIO();
+        this.currentEventSource = null; // SSE connection
+        
         this.bindEvents();
+        
+        console.log('🎬 VideoManager initialized with session:', this.sessionId);
     }
     
     generateSessionId() {
-        return 'session_' + Math.random().toString(36).substr(2, 9);
+        return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     }
     
-    initializeSocketIO() {
-        try {
-            // Use global SocketManager instead of creating new connection
-            if (window.socketManager) {
-                console.log('🔌 Using global SocketManager');
+    startProgressStream(jobId) {
+        console.log('📡 [VideoManager] Starting SSE stream for job:', jobId);
+        
+        // Close existing stream if any
+        if (this.currentEventSource) {
+            console.log('📡 [VideoManager] Closing existing SSE stream');
+            this.currentEventSource.close();
+        }
+        
+        // Create new SSE connection
+        this.currentEventSource = new EventSource(`/api/video-progress/${jobId}`);
+        
+        this.currentEventSource.onopen = () => {
+            console.log('📡 [VideoManager] SSE connection opened for job:', jobId);
+        };
+        
+        this.currentEventSource.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                console.log('📺 [VideoManager] SSE event received:', data);
                 
-                // Join session when connected
-                if (window.socketManager.isSocketConnected()) {
-                    window.socketManager.joinSession(this.sessionId);
+                if (data.type === 'connected') {
+                    console.log('📡 [VideoManager] SSE connected to job:', data.job_id);
+                } else if (data.type === 'error') {
+                    console.error('❌ [VideoManager] SSE error:', data.message);
+                    this.uiManager.addAIMessage('❌ **Lỗi kết nối realtime:** ' + data.message);
+                } else if (data.type === 'timeout') {
+                    console.warn('⏰ [VideoManager] SSE timeout for job:', data.job_id);
+                    this.uiManager.addAIMessage('⏰ **Timeout:** Không nhận được cập nhật trong 5 phút');
                 } else {
-                    // Wait for connection
-                    window.socketManager.addEventListener('connect', () => {
-                        window.socketManager.joinSession(this.sessionId);
-                    });
-                }
-                
-                // Listen for video progress events
-                window.socketManager.addEventListener('video_progress', (data) => {
+                    // Regular progress event
                     this.handleVideoProgress(data);
-                });
-                
-                // Listen for disconnect events
-                window.socketManager.addEventListener('disconnect', (data) => {
-                    console.log('🔌 VideoManager: Socket disconnected:', data.reason);
-                });
-                
-            } else {
-                console.error('❌ SocketManager not available');
+                }
+            } catch (e) {
+                console.error('❌ [VideoManager] Error parsing SSE data:', e);
             }
-            
-        } catch (error) {
-            console.error('❌ Failed to initialize SocketIO:', error);
+        };
+        
+        this.currentEventSource.onerror = (error) => {
+            console.error('❌ [VideoManager] SSE error:', error);
+            if (this.currentEventSource.readyState === EventSource.CLOSED) {
+                console.log('📡 [VideoManager] SSE connection closed');
+            }
+        };
+    }
+    
+    stopProgressStream() {
+        if (this.currentEventSource) {
+            console.log('📡 [VideoManager] Stopping SSE stream');
+            this.currentEventSource.close();
+            this.currentEventSource = null;
         }
     }
-    
+
     handleVideoProgress(data) {
         console.log('📺 [VideoManager] Video progress received:', data);
         console.log('📺 [VideoManager] Current job:', this.currentVideoJob);
         console.log('📺 [VideoManager] Received job:', data.job_id);
-        
-        // TEMP FIX: Bỏ qua check job_id để đảm bảo UI luôn cập nhật
-        // TODO: Fix job_id management sau khi debug xong
         
         const { step, message, progress, data: stepData } = data;
         
@@ -73,6 +92,7 @@ class VideoManager {
             console.log(`📺 [VideoManager] Video ${step}! Clearing job and showing final result.`);
             this.currentVideoJob = null;
             this.uiManager.hideTypingIndicator();
+            this.stopProgressStream(); // Stop SSE stream
             
             if (step === 'completed') {
                 this.notificationManager.showSuccess('🎬 Video được tạo thành công!');
@@ -259,20 +279,20 @@ class VideoManager {
                     duration: duration,
                     composition: composition,
                     background: background,
-                    voice: voice,
-                    session_id: this.sessionId
+                    voice: voice
+                    // Removed session_id - không cần cho SSE
                 })
             });
             
             const data = await response.json();
             
             if (data.success) {
-                // Lưu job ID để track progress
+                // Lưu job ID và bắt đầu SSE stream
                 this.currentVideoJob = data.job_id;
-                console.log('🎬 Video creation started, job ID:', data.job_id);
+                console.log('🎬 [VideoManager] Video creation started, job ID:', data.job_id);
                 
-                // Progress sẽ được cập nhật qua SocketIO
-                // Không cần addAIMessage ở đây vì sẽ được handle bởi progress events
+                // Bắt đầu SSE stream để nhận progress updates
+                this.startProgressStream(data.job_id);
                 
             } else {
                 this.uiManager.hideTypingIndicator();

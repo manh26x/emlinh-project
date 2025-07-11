@@ -1,18 +1,20 @@
-from flask import render_template, request, jsonify, session, send_file, abort
+from flask import render_template, request, jsonify, session, send_file, abort, Response
 from src.app.extensions import db, csrf
 from src.services.flow_service import flow_service
-from src.services.chat_service import get_chat_service
-from src.services.video_service import get_video_service
-from src.services.tts_service import get_tts_service
+from src.services.facebook_service import facebook_service
+from src.services.chat_service import ChatService
+from src.services.embedding_service import EmbeddingService
 from src.app.models import Chat, Idea, Video
-from datetime import datetime
 import threading
+import uuid
+import datetime
+from datetime import datetime
 import os
+import mimetypes
 from pathlib import Path
 
 from flask_wtf.csrf import CSRFProtect
 from flask_socketio import SocketIO, emit, join_room, leave_room
-import uuid
 
 def safe_datetime_to_string(dt_obj):
     """Safely convert datetime object to string, return as-is if already string"""
@@ -244,7 +246,7 @@ def register_routes(app, socketio=None):
         try:
             limit = request.args.get('limit', 50, type=int)
             
-            chat_service = get_chat_service()
+            chat_service = ChatService()
             history = chat_service.get_chat_history(session_id, limit)
             
             return jsonify({
@@ -274,7 +276,7 @@ def register_routes(app, socketio=None):
                     'message': 'Query không được để trống'
                 }), 400
             
-            chat_service = get_chat_service()
+            chat_service = ChatService()
             results = chat_service.search_similar_conversations(query, limit)
             
             return jsonify({
@@ -547,10 +549,69 @@ def register_routes(app, socketio=None):
                 'message': f'Lỗi server: {str(e)}'
             }), 500
 
+    @app.route('/api/video-progress/<job_id>')
+    def video_progress_stream(job_id):
+        """Server-Sent Events endpoint để stream video progress"""
+        def generate_progress_events():
+            import time
+            import json
+            from collections import defaultdict
+            
+            # Store để tracking video progress
+            if not hasattr(app, 'video_progress_store'):
+                app.video_progress_store = defaultdict(list)
+            
+            # Send initial connection confirmation
+            yield f"data: {json.dumps({'type': 'connected', 'job_id': job_id})}\n\n"
+            
+            last_event_index = 0
+            max_wait = 300  # 5 minutes timeout
+            wait_count = 0
+            
+            while wait_count < max_wait:
+                try:
+                    # Check for new events for this job
+                    events = app.video_progress_store.get(job_id, [])
+                    
+                    if len(events) > last_event_index:
+                        # Send new events
+                        for i in range(last_event_index, len(events)):
+                            event_data = events[i]
+                            yield f"data: {json.dumps(event_data)}\n\n"
+                            
+                            # If completed or failed, stop streaming
+                            if event_data.get('step') in ['completed', 'failed']:
+                                return
+                        
+                        last_event_index = len(events)
+                    
+                    time.sleep(1)  # Check every second
+                    wait_count += 1
+                    
+                except Exception as e:
+                    print(f"❌ [SSE] Error in progress stream: {str(e)}")
+                    yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+                    break
+            
+            # Timeout
+            yield f"data: {json.dumps({'type': 'timeout', 'job_id': job_id})}\n\n"
+        
+        response = Response(
+            generate_progress_events(),
+            mimetype='text/event-stream',
+            headers={
+                'Cache-Control': 'no-cache',
+                'Connection': 'keep-alive',
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Headers': 'Cache-Control'
+            }
+        )
+        return response
+
     @app.route('/api/chat/create-video', methods=['POST'])
     @csrf.exempt
     def create_video_from_chat():
-        """API để tạo video trực tiếp từ chat interface với realtime updates"""
+        """API để tạo video trực tiếp từ chat interface với realtime updates qua SSE"""
         try:
             data = request.get_json()
             topic = data.get('topic')
@@ -558,7 +619,6 @@ def register_routes(app, socketio=None):
             composition = data.get('composition', 'Scene-Landscape')
             background = data.get('background', 'office')
             voice = data.get('voice', 'nova')
-            session_id = data.get('session_id', str(uuid.uuid4()))
             
             if not topic:
                 return jsonify({
@@ -569,21 +629,8 @@ def register_routes(app, socketio=None):
             # Tạo job ID cho việc tracking
             job_id = f"video_{int(datetime.now().timestamp())}_{uuid.uuid4().hex[:8]}"
             
-            # Emit bước đầu tiên
-            if socketio:
-                socketio.emit('video_progress', {
-                    'job_id': job_id,
-                    'step': 'request_received',
-                    'message': f'Đã nhận yêu cầu tạo video về: {topic}',
-                    'progress': 5,
-                    'data': {
-                        'topic': topic,
-                        'duration': duration,
-                        'composition': composition,
-                        'background': background,
-                        'voice': voice
-                    }
-                }, room=session_id)
+            print(f"🎬 [API] Starting video creation - Job ID: {job_id}")
+            print(f"🎬 [API] Topic: {topic}")
             
             # Chạy video production trong thread riêng để không block response
             def run_video_production():
@@ -597,22 +644,34 @@ def register_routes(app, socketio=None):
                         composition=composition,
                         background=background,
                         voice=voice,
-                        socketio=socketio,
-                        session_id=session_id,
+                        socketio=None,  # Không sử dụng SocketIO nữa
+                        session_id="",  # Không cần session_id cho SSE
                         job_id=job_id
                     )
-                    # ĐÃ EMIT 'completed' TRONG create_video_from_topic_realtime, KHÔNG EMIT LẠI Ở ĐÂY
+                    
+                    print(f"🎬 [API] Video production completed for job: {job_id}")
                     
                 except Exception as e:
-                    print(f"❌ Video production failed: {str(e)}")
-                    if socketio:
-                        socketio.emit('video_progress', {
+                    print(f"❌ [API] Video production failed for job {job_id}: {str(e)}")
+                    # Store error event
+                    try:
+                        from flask import current_app
+                        from collections import defaultdict
+                        
+                        if not hasattr(current_app, 'video_progress_store'):
+                            current_app.video_progress_store = defaultdict(list)
+                        
+                        error_event = {
                             'job_id': job_id,
                             'step': 'failed',
                             'message': f'Lỗi tạo video: {str(e)}',
                             'progress': 0,
-                            'error': str(e)
-                        }, room=session_id)
+                            'data': {'error': str(e)},
+                            'timestamp': datetime.now().isoformat()
+                        }
+                        current_app.video_progress_store[job_id].append(error_event)
+                    except Exception as store_error:
+                        print(f"❌ [API] Failed to store error event: {str(store_error)}")
             
             # Chạy trong thread riêng
             thread = threading.Thread(target=run_video_production)
@@ -622,8 +681,7 @@ def register_routes(app, socketio=None):
             return jsonify({
                 'success': True,
                 'job_id': job_id,
-                'session_id': session_id,
-                'message': 'Video creation initiated with realtime updates'
+                'message': 'Video creation initiated. Use SSE endpoint to track progress.'
             })
             
         except Exception as e:
