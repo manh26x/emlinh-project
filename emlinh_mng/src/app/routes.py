@@ -25,11 +25,6 @@ def safe_datetime_to_string(dt_obj):
 def register_routes(app, socketio=None):
     """Register all routes with the Flask app"""
     
-    @app.route('/debug')
-    def debug_page():
-        """Trang debug để test SocketIO và video progress"""
-        return render_template('debug.html')
-
     @app.route('/')
     def index():
         """Home page route"""

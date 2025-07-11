@@ -55,21 +55,17 @@ class VideoManager {
         console.log('📺 [VideoManager] Current job:', this.currentVideoJob);
         console.log('📺 [VideoManager] Received job:', data.job_id);
         
-        // Cho phép hiển thị progress cho tất cả video jobs (không check quá nghiêm ngặt)
-        // Chỉ check nếu có currentVideoJob và không khớp thì log để debug
-        if (this.currentVideoJob && this.currentVideoJob !== data.job_id) {
-            console.log('📺 [VideoManager] Received progress for different job:', data.job_id, 'current:', this.currentVideoJob);
-            // Vẫn hiển thị progress cho user để đảm bảo họ thấy được tiến trình
-        }
+        // TEMP FIX: Bỏ qua check job_id để đảm bảo UI luôn cập nhật
+        // TODO: Fix job_id management sau khi debug xong
         
         const { step, message, progress, data: stepData } = data;
         
         console.log(`📺 [VideoManager] Processing step: ${step}, progress: ${progress}%`);
         
-        // Hiển thị messages cho các bước quan trọng
+        // LUÔN hiển thị messages cho các bước quan trọng
         this.showStepMessage(step, message, progress, stepData);
         
-        // Cập nhật typing indicator với progress hiện tại
+        // LUÔN cập nhật typing indicator với progress hiện tại
         this.updateVideoProgress(step, message, progress, stepData);
         
         // Nếu hoàn thành hoặc lỗi, clear current job và hiển thị kết quả cuối
