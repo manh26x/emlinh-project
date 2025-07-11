@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug SocketIO - Emlinh AI</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+</head>
+<body>
+    <div class="container mt-4">
+        <h1>🔧 Debug SocketIO & Video Progress</h1>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>🔌 SocketIO Connection</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="connectionStatus" class="alert alert-warning">Chưa kết nối</div>
+                        <button class="btn btn-primary" onclick="connectSocket()">Kết nối SocketIO</button>
+                        <button class="btn btn-secondary" onclick="disconnectSocket()">Ngắt kết nối</button>
+                        <hr>
+                        <div>
+                            <label>Session ID:</label>
+                            <input type="text" id="sessionId" class="form-control mb-2" placeholder="Nhập session ID">
+                            <button class="btn btn-success" onclick="joinSession()">Join Session</button>
+                            <button class="btn btn-warning" onclick="leaveSession()">Leave Session</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h5>🎬 Test Video Creation</h5>
+                    </div>
+                    <div class="card-body">
+                        <div>
+                            <label>Topic:</label>
+                            <input type="text" id="videoTopic" class="form-control mb-2" value="Debug test video">
+                            <button class="btn btn-primary" onclick="createTestVideo()">Tạo Video Test</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>📺 Video Progress Events</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="progressEvents" style="height: 400px; overflow-y: auto; background: #f8f9fa; padding: 10px; border-radius: 5px;">
+                            <!-- Events sẽ hiển thị ở đây -->
+                        </div>
+                        <button class="btn btn-danger btn-sm mt-2" onclick="clearEvents()">Xóa Events</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mt-3">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>📋 Console Logs</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="consoleLogs" style="height: 200px; overflow-y: auto; background: #212529; color: #fff; padding: 10px; border-radius: 5px; font-family: monospace;">
+                            <!-- Console logs sẽ hiển thị ở đây -->
+                        </div>
+                        <button class="btn btn-danger btn-sm mt-2" onclick="clearLogs()">Xóa Logs</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let socket = null;
+        let currentSessionId = null;
+        
+        // Generate unique session ID
+        function generateSessionId() {
+            return `debug_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        }
+        
+        // Log function
+        function addLog(message, type = 'info') {
+            const logs = document.getElementById('consoleLogs');
+            const timestamp = new Date().toLocaleTimeString();
+            const colorClass = type === 'error' ? 'text-danger' : type === 'success' ? 'text-success' : 'text-info';
+            logs.innerHTML += `<div class="${colorClass}">[${timestamp}] ${message}</div>`;
+            logs.scrollTop = logs.scrollHeight;
+        }
+        
+        // Progress event display
+        function addProgressEvent(data) {
+            const events = document.getElementById('progressEvents');
+            const timestamp = new Date().toLocaleTimeString();
+            events.innerHTML += `
+                <div class="border-bottom mb-2 pb-2">
+                    <strong>[${timestamp}] ${data.step}</strong> (${data.progress}%)<br>
+                    <small class="text-muted">Job: ${data.job_id}</small><br>
+                    <small>${data.message}</small>
+                    ${data.data ? `<br><small class="text-success">Data: ${JSON.stringify(data.data, null, 2)}</small>` : ''}
+                </div>
+            `;
+            events.scrollTop = events.scrollHeight;
+        }
+        
+        // Connect SocketIO
+        function connectSocket() {
+            try {
+                socket = io({
+                    transports: ['websocket', 'polling'],
+                    upgrade: true,
+                    rememberUpgrade: true,
+                    timeout: 60000
+                });
+                
+                socket.on('connect', () => {
+                    addLog('✅ SocketIO connected - SID: ' + socket.id, 'success');
+                    document.getElementById('connectionStatus').innerHTML = 
+                        '<div class="alert alert-success">✅ Đã kết nối - SID: ' + socket.id + '</div>';
+                    
+                    // Auto-generate and set session ID
+                    currentSessionId = generateSessionId();
+                    document.getElementById('sessionId').value = currentSessionId;
+                    addLog('📋 Generated session ID: ' + currentSessionId);
+                });
+                
+                socket.on('disconnect', (reason) => {
+                    addLog('🔌 SocketIO disconnected: ' + reason, 'error');
+                    document.getElementById('connectionStatus').innerHTML = 
+                        '<div class="alert alert-warning">⚠️ Đã ngắt kết nối: ' + reason + '</div>';
+                });
+                
+                socket.on('connect_error', (error) => {
+                    addLog('❌ Connection error: ' + error, 'error');
+                });
+                
+                // Listen for video progress events
+                socket.on('video_progress', (data) => {
+                    addLog('📺 Received video_progress: ' + JSON.stringify(data), 'success');
+                    addProgressEvent(data);
+                });
+                
+                addLog('🔧 Attempting to connect SocketIO...');
+                
+            } catch (error) {
+                addLog('❌ Failed to create socket: ' + error, 'error');
+            }
+        }
+        
+        // Disconnect SocketIO
+        function disconnectSocket() {
+            if (socket) {
+                socket.disconnect();
+                socket = null;
+                addLog('🔌 Socket disconnected manually');
+                document.getElementById('connectionStatus').innerHTML = 
+                    '<div class="alert alert-secondary">Đã ngắt kết nối</div>';
+            }
+        }
+        
+        // Join session
+        function joinSession() {
+            const sessionId = document.getElementById('sessionId').value;
+            if (socket && sessionId) {
+                socket.emit('join_session', { session_id: sessionId });
+                currentSessionId = sessionId;
+                addLog('📋 Joining session: ' + sessionId, 'success');
+            } else {
+                addLog('❌ Cannot join session - socket not connected or no session ID', 'error');
+            }
+        }
+        
+        // Leave session
+        function leaveSession() {
+            const sessionId = document.getElementById('sessionId').value;
+            if (socket && sessionId) {
+                socket.emit('leave_session', { session_id: sessionId });
+                addLog('🚪 Leaving session: ' + sessionId);
+            }
+        }
+        
+        // Create test video
+        function createTestVideo() {
+            const topic = document.getElementById('videoTopic').value;
+            const sessionId = currentSessionId || document.getElementById('sessionId').value;
+            
+            if (!sessionId) {
+                addLog('❌ No session ID set', 'error');
+                return;
+            }
+            
+            addLog('🎬 Creating test video: ' + topic);
+            
+            const videoData = {
+                topic: topic,
+                duration: 10,
+                composition: 'Scene-Landscape',
+                background: 'office',
+                voice: 'nova',
+                session_id: sessionId
+            };
+            
+            fetch('/api/chat/create-video', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(videoData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    addLog('✅ Video creation initiated: ' + data.job_id, 'success');
+                } else {
+                    addLog('❌ Video creation failed: ' + data.message, 'error');
+                }
+            })
+            .catch(error => {
+                addLog('❌ Request failed: ' + error, 'error');
+            });
+        }
+        
+        // Clear functions
+        function clearEvents() {
+            document.getElementById('progressEvents').innerHTML = '';
+        }
+        
+        function clearLogs() {
+            document.getElementById('consoleLogs').innerHTML = '';
+        }
+        
+        // Auto-connect on page load
+        window.addEventListener('load', () => {
+            addLog('🚀 Debug page loaded');
+            connectSocket();
+        });
+    </script>
+</body>
+</html> 
