@@ -601,17 +601,8 @@ def register_routes(app, socketio=None):
                         session_id=session_id,
                         job_id=job_id
                     )
+                    # ĐÃ EMIT 'completed' TRONG create_video_from_topic_realtime, KHÔNG EMIT LẠI Ở ĐÂY
                     
-                    # Emit kết quả cuối cùng
-                    if socketio:
-                        socketio.emit('video_progress', {
-                            'job_id': job_id,
-                            'step': 'completed',
-                            'message': 'Video đã được tạo thành công!',
-                            'progress': 100,
-                            'data': result
-                        }, room=session_id)
-                        
                 except Exception as e:
                     print(f"❌ Video production failed: {str(e)}")
                     if socketio:
