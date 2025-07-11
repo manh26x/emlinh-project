@@ -51,16 +51,20 @@ class VideoManager {
     }
     
     handleVideoProgress(data) {
-        console.log('📺 Video progress:', data);
+        console.log('📺 [VideoManager] Video progress received:', data);
+        console.log('📺 [VideoManager] Current job:', this.currentVideoJob);
+        console.log('📺 [VideoManager] Received job:', data.job_id);
         
         // Cho phép hiển thị progress cho tất cả video jobs (không check quá nghiêm ngặt)
         // Chỉ check nếu có currentVideoJob và không khớp thì log để debug
         if (this.currentVideoJob && this.currentVideoJob !== data.job_id) {
-            console.log('📺 Received progress for different job:', data.job_id, 'current:', this.currentVideoJob);
+            console.log('📺 [VideoManager] Received progress for different job:', data.job_id, 'current:', this.currentVideoJob);
             // Vẫn hiển thị progress cho user để đảm bảo họ thấy được tiến trình
         }
         
         const { step, message, progress, data: stepData } = data;
+        
+        console.log(`📺 [VideoManager] Processing step: ${step}, progress: ${progress}%`);
         
         // Hiển thị messages cho các bước quan trọng
         this.showStepMessage(step, message, progress, stepData);
@@ -70,6 +74,7 @@ class VideoManager {
         
         // Nếu hoàn thành hoặc lỗi, clear current job và hiển thị kết quả cuối
         if (step === 'completed' || step === 'failed') {
+            console.log(`📺 [VideoManager] Video ${step}! Clearing job and showing final result.`);
             this.currentVideoJob = null;
             this.uiManager.hideTypingIndicator();
             
@@ -90,6 +95,7 @@ class VideoManager {
                     }
                 }
                 
+                console.log('📺 [VideoManager] Adding completion message:', completionMessage);
                 this.uiManager.addAIMessage(completionMessage);
                 
             } else {
@@ -100,6 +106,8 @@ class VideoManager {
     }
     
     showStepMessage(step, message, progress, stepData) {
+        console.log(`📺 [VideoManager] showStepMessage called - step: ${step}, message: ${message}`);
+        
         // Chỉ hiển thị message cho các bước quan trọng để tránh spam
         const importantSteps = [
             'script_completed',
@@ -109,6 +117,8 @@ class VideoManager {
             'completed',
             'failed'
         ];
+        
+        console.log(`📺 [VideoManager] Is important step? ${importantSteps.includes(step)}`);
         
         if (importantSteps.includes(step)) {
             let stepMessage = this.formatProgressMessage(step, message, progress, stepData);
@@ -131,6 +141,7 @@ class VideoManager {
                 stepMessage += `\n🆔 **Video ID:** ${stepData.video_id}`;
             }
             
+            console.log(`📺 [VideoManager] Adding step message for ${step}:`, stepMessage);
             // Thêm AI message để user thấy rõ tiến trình
             this.uiManager.addAIMessage(stepMessage);
         }
