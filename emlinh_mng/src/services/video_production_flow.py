@@ -672,7 +672,8 @@ def create_video_from_topic_realtime(
     voice: str = "nova",
     socketio=None,
     session_id: str = "",
-    job_id: str = ""
+    job_id: str = "",
+    app_instance=None  # Thêm app instance parameter
 ) -> Dict[str, Any]:
     """
     Hàm tạo video với realtime updates qua Server-Sent Events
@@ -686,6 +687,7 @@ def create_video_from_topic_realtime(
         socketio: DEPRECATED - không sử dụng nữa
         session_id: DEPRECATED - không cần cho SSE
         job_id: Job ID để tracking
+        app_instance: Flask app instance để access progress store
         
     Returns:
         Dict chứa thông tin kết quả và trạng thái
@@ -694,8 +696,6 @@ def create_video_from_topic_realtime(
     def store_progress(step: str, message: str, progress: int, data: dict = None):
         """Helper function để store progress events cho SSE"""
         try:
-            from flask import current_app
-            
             event_data = {
                 'job_id': job_id,
                 'step': step,
@@ -709,12 +709,16 @@ def create_video_from_topic_realtime(
             print(f"📡 [SSE] Job ID: {job_id}")
             print(f"📡 [SSE] Event data: {event_data}")
             
-            # Store event in app progress store
-            if not hasattr(current_app, 'video_progress_store'):
-                from collections import defaultdict
-                current_app.video_progress_store = defaultdict(list)
-            
-            current_app.video_progress_store[job_id].append(event_data)
+            # Use app_instance instead of current_app
+            if app_instance:
+                if not hasattr(app_instance, 'video_progress_store'):
+                    from collections import defaultdict
+                    app_instance.video_progress_store = defaultdict(list)
+                
+                app_instance.video_progress_store[job_id].append(event_data)
+                print(f"✅ [SSE] Event stored successfully")
+            else:
+                print(f"⚠️ [SSE] No app instance provided - cannot store progress")
             
         except Exception as e:
             print(f"⚠️ [SSE] Error storing progress: {str(e)}")

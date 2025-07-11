@@ -641,20 +641,20 @@ def register_routes(app, socketio=None):
                         voice=voice,
                         socketio=None,  # Không sử dụng SocketIO nữa
                         session_id="",  # Không cần session_id cho SSE
-                        job_id=job_id
+                        job_id=job_id,
+                        app_instance=app  # Truyền app instance từ route context
                     )
                     
                     print(f"🎬 [API] Video production completed for job: {job_id}")
                     
                 except Exception as e:
                     print(f"❌ [API] Video production failed for job {job_id}: {str(e)}")
-                    # Store error event
+                    # Store error event using app instance
                     try:
-                        from flask import current_app
                         from collections import defaultdict
                         
-                        if not hasattr(current_app, 'video_progress_store'):
-                            current_app.video_progress_store = defaultdict(list)
+                        if not hasattr(app, 'video_progress_store'):
+                            app.video_progress_store = defaultdict(list)
                         
                         error_event = {
                             'job_id': job_id,
@@ -664,7 +664,8 @@ def register_routes(app, socketio=None):
                             'data': {'error': str(e)},
                             'timestamp': datetime.now().isoformat()
                         }
-                        current_app.video_progress_store[job_id].append(error_event)
+                        app.video_progress_store[job_id].append(error_event)
+                        print(f"✅ [API] Error event stored for job: {job_id}")
                     except Exception as store_error:
                         print(f"❌ [API] Failed to store error event: {str(store_error)}")
             
