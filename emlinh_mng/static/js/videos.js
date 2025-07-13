@@ -1,4 +1,4 @@
-class VideoManager {
+class VideoListManager {
     constructor() {
         this.currentPage = 1;
         this.currentFilters = {
@@ -427,7 +427,7 @@ class VideoManager {
     
     debounce(func, wait) {
         let timeout;
-        return function executedFunction(...args) {
+        return function debouncedFunction(...args) {
             const later = () => {
                 clearTimeout(timeout);
                 func(...args);
@@ -438,7 +438,7 @@ class VideoManager {
     }
 }
 
-// Initialize video manager when DOM is loaded
+// Initialize video list manager when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    window.videoManager = new VideoManager();
+    window.videoListManager = new VideoListManager();
 }); 

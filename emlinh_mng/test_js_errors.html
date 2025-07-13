@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test JavaScript Errors</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .error { color: red; }
+        .success { color: green; }
+        .info { color: blue; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .test-result { margin: 10px 0; padding: 10px; border-radius: 3px; }
+        .test-result.error { background-color: #ffebee; border: 1px solid #f44336; }
+        .test-result.success { background-color: #e8f5e8; border: 1px solid #4caf50; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Test JavaScript Errors After SSE Migration</h1>
+    
+    <div class="section">
+        <h2>1. Load JavaScript Modules</h2>
+        <div id="loading-results"></div>
+    </div>
+
+    <div class="section">
+        <h2>2. Test Manager Creation</h2>
+        <div id="manager-results"></div>
+    </div>
+
+    <div class="section">
+        <h2>3. Check Dependencies</h2>
+        <div id="dependency-results"></div>
+    </div>
+
+    <div class="section">
+        <h2>4. Test Functions</h2>
+        <div id="function-results"></div>
+    </div>
+
+    <!-- Load all modules in the same order as chat.html -->
+    <script src="static/js/core/SessionManager.js"></script>
+    <script src="static/js/core/NotificationManager.js"></script>
+    <script src="static/js/core/UIManager.js"></script>
+    <script src="static/js/core/ChatCore.js"></script>
+    <script src="static/js/modules/VideoManager.js"></script>
+    <script src="static/js/modules/IdeaManager.js"></script>
+    <script src="static/js/utils/ChatUtils.js"></script>
+    <script src="static/js/ChatManager.js"></script>
+
+    <script>
+        function addResult(containerId, message, isError = false) {
+            const container = document.getElementById(containerId);
+            const div = document.createElement('div');
+            div.className = `test-result ${isError ? 'error' : 'success'}`;
+            div.innerHTML = `${isError ? '❌' : '✅'} ${message}`;
+            container.appendChild(div);
+        }
+
+        function testJavaScriptModules() {
+            console.log('🚀 Testing JavaScript modules...');
+            
+            // Test 1: Module Loading
+            const modules = {
+                'SessionManager': window.SessionManager,
+                'NotificationManager': window.NotificationManager,
+                'UIManager': window.UIManager,
+                'ChatCore': window.ChatCore,
+                'VideoManager': window.VideoManager,
+                'IdeaManager': window.IdeaManager,
+                'ChatUtils': window.ChatUtils,
+                'ChatManager': window.ChatManager
+            };
+
+            Object.entries(modules).forEach(([name, module]) => {
+                if (typeof module === 'function') {
+                    addResult('loading-results', `${name} loaded successfully`);
+                } else {
+                    addResult('loading-results', `${name} failed to load or is not a class/function`, true);
+                }
+            });
+
+            // Test 2: Manager Creation
+            try {
+                const sessionManager = new SessionManager();
+                addResult('manager-results', 'SessionManager created successfully');
+            } catch (error) {
+                addResult('manager-results', `SessionManager creation failed: ${error.message}`, true);
+            }
+
+            try {
+                const notificationManager = new NotificationManager();
+                addResult('manager-results', 'NotificationManager created successfully');
+            } catch (error) {
+                addResult('manager-results', `NotificationManager creation failed: ${error.message}`, true);
+            }
+
+            try {
+                const uiManager = new UIManager();
+                addResult('manager-results', 'UIManager created successfully');
+            } catch (error) {
+                addResult('manager-results', `UIManager creation failed: ${error.message}`, true);
+            }
+
+            try {
+                const notificationManager = new NotificationManager();
+                const uiManager = new UIManager();
+                const videoManager = new VideoManager(notificationManager, uiManager);
+                addResult('manager-results', 'VideoManager created successfully');
+            } catch (error) {
+                addResult('manager-results', `VideoManager creation failed: ${error.message}`, true);
+            }
+
+            try {
+                const chatManager = new ChatManager();
+                addResult('manager-results', 'ChatManager created successfully');
+            } catch (error) {
+                addResult('manager-results', `ChatManager creation failed: ${error.message}`, true);
+            }
+
+            // Test 3: Dependencies
+            if (typeof VideoManager !== 'undefined') {
+                addResult('dependency-results', 'VideoManager is defined');
+            } else {
+                addResult('dependency-results', 'VideoManager is not defined', true);
+            }
+
+            if (typeof ChatUtils !== 'undefined') {
+                addResult('dependency-results', 'ChatUtils is defined');
+            } else {
+                addResult('dependency-results', 'ChatUtils is not defined', true);
+            }
+
+            // Test 4: Functions
+            if (typeof ChatUtils !== 'undefined' && typeof ChatUtils.copyToClipboard === 'function') {
+                addResult('function-results', 'ChatUtils.copyToClipboard is available');
+            } else {
+                addResult('function-results', 'ChatUtils.copyToClipboard is not available', true);
+            }
+
+            if (typeof ChatUtils !== 'undefined' && typeof ChatUtils.exportChat === 'function') {
+                addResult('function-results', 'ChatUtils.exportChat is available');
+            } else {
+                addResult('function-results', 'ChatUtils.exportChat is not available', true);
+            }
+        }
+
+        // Run tests when all modules are loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🔧 Starting JavaScript error tests...');
+            
+            // Add some delay to ensure all modules are loaded
+            setTimeout(testJavaScriptModules, 1000);
+        });
+
+        // Catch and display JavaScript errors
+        window.addEventListener('error', function(e) {
+            console.error('JavaScript Error:', e.error);
+            addResult('loading-results', `JavaScript Error: ${e.error.message} at ${e.filename}:${e.lineno}`, true);
+        });
+    </script>
+</body>
+</html> 

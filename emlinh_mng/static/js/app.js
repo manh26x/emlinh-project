@@ -167,8 +167,8 @@ class VideoManagerBackup {
     }
 }
 
-// Chat utilities
-const ChatUtils = {
+// Chat utilities for compatibility
+const AppChatUtils = {
     // Generate session ID
     generateSessionId: () => {
         return 'chat_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
@@ -243,4 +243,4 @@ document.addEventListener('DOMContentLoaded', function() {
 // Export utilities for use in other modules
 window.EmlinlhUtils = Utils;
 // VideoManager will be loaded from modules/VideoManager.js
-window.ChatUtils = ChatUtils;
+window.AppChatUtils = AppChatUtils;

@@ -143,9 +143,7 @@ class ChatCore {
     }
     
     startVideoStatusPolling(jobId) {
-        """
-        Fallback polling method nếu SSE không hoạt động
-        """
+        // Fallback polling method nếu SSE không hoạt động
         console.log('🔄 [ChatCore] Starting fallback status polling for job:', jobId);
         
         const pollInterval = 3000; // 3 seconds

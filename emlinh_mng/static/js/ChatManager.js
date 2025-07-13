@@ -17,9 +17,9 @@ class ChatManager {
         this.sessionManager = new SessionManager();
         this.notificationManager = new NotificationManager();
         this.uiManager = new UIManager();
-        this.chatCore = new ChatCore(this.sessionManager, this.uiManager, this.notificationManager);
         this.videoManager = new VideoManager(this.notificationManager, this.uiManager);
-        this.ideaManager = new IdeaManager();
+        this.ideaManager = new IdeaManager(this.notificationManager, this.uiManager);
+        this.chatCore = new ChatCore(this.sessionManager, this.uiManager, this.notificationManager);
         
         console.log('✅ All managers initialized');
     }

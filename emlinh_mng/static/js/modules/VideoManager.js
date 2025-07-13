@@ -191,9 +191,7 @@ class VideoManager {
     }
     
     async checkJobStatus(jobId) {
-        """
-        Fallback method để check job status nếu SSE fails
-        """
+        // Fallback method để check job status nếu SSE fails
         try {
             console.log('🔍 [VideoManager] Checking job status for:', jobId);
             
