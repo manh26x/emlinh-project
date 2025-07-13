@@ -1,0 +1,334 @@
+{% extends "base.html" %}
+
+{% block title %}Lịch sử Chat - Emlinh AI Assistant{% endblock %}
+
+{% block content %}
+<div class="container-fluid h-100">
+    <div class="row h-100">
+        <!-- Sidebar - Chat Sessions List -->
+        <div class="col-md-4 h-100">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-header bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <h5 class="mb-0 fw-bold">📚 Lịch sử Chat</h5>
+                            <small class="opacity-75">Quản lý cuộc hội thoại</small>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-sm btn-outline-light" id="refreshBtn" title="Làm mới">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-light" id="newChatBtn" title="Chat mới">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card-body p-0">
+                    <!-- Search and Filter -->
+                    <div class="p-3 border-bottom">
+                        <div class="mb-3">
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-search"></i>
+                                </span>
+                                <input type="text" class="form-control" id="searchInput" placeholder="Tìm kiếm cuộc hội thoại...">
+                                <button class="btn btn-outline-secondary" type="button" id="searchBtn">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex gap-2 mb-3">
+                            <button class="btn btn-sm btn-outline-primary active" id="filterAll">
+                                <i class="fas fa-list"></i> Tất cả
+                            </button>
+                            <button class="btn btn-sm btn-outline-warning" id="filterFavorite">
+                                <i class="fas fa-star"></i> Yêu thích
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary" id="filterArchived">
+                                <i class="fas fa-archive"></i> Lưu trữ
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Sessions List -->
+                    <div id="sessionsList" class="flex-grow-1" style="height: calc(100vh - 250px); overflow-y: auto;">
+                        <div class="p-3 text-center text-muted">
+                            <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
+                            <p>Đang tải lịch sử chat...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Content - Chat Messages -->
+        <div class="col-md-8 h-100">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-header bg-light">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div id="chatHeader">
+                            <h6 class="mb-0 text-muted">
+                                <i class="fas fa-comments me-2"></i>
+                                Chọn một cuộc hội thoại để xem chi tiết
+                            </h6>
+                        </div>
+                        <div class="d-flex gap-2" id="chatActions" style="display: none !important;">
+                            <button class="btn btn-sm btn-outline-primary" id="editSessionBtn" title="Chỉnh sửa">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-warning" id="favoriteBtn" title="Yêu thích">
+                                <i class="fas fa-star"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary" id="archiveBtn" title="Lưu trữ">
+                                <i class="fas fa-archive"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" id="deleteSessionBtn" title="Xóa">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card-body p-0">
+                    <!-- Chat Messages Container -->
+                    <div id="chatMessagesContainer" class="h-100 overflow-auto" style="background: linear-gradient(to bottom, #f8fafc, #ffffff);">
+                        <div class="p-4 text-center h-100 d-flex flex-column justify-content-center">
+                            <div class="mb-4">
+                                <div class="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center" style="width: 80px; height: 80px; background: linear-gradient(45deg, #6366f1, #8b5cf6);">
+                                    <i class="fas fa-comments text-white" style="font-size: 2rem;"></i>
+                                </div>
+                                <h4 class="text-muted mb-3">Chào mừng đến với Lịch sử Chat</h4>
+                                <p class="text-muted mb-4">Tất cả cuộc hội thoại được tự động lưu khi bạn chat với AI. Chọn một cuộc hội thoại từ danh sách bên trái để xem chi tiết và tiếp tục trò chuyện.</p>
+                                <div class="d-flex gap-2 justify-content-center">
+                                    <button class="btn btn-primary" id="startNewChatBtn">
+                                        <i class="fas fa-plus me-2"></i>Bắt đầu chat mới
+                                    </button>
+                                    <button class="btn btn-outline-secondary" id="viewAllSessionsBtn">
+                                        <i class="fas fa-list me-2"></i>Xem tất cả
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Continue Chat Button -->
+                <div class="card-footer bg-light" id="continueChat" style="display: none;">
+                    <div class="d-flex justify-content-center">
+                        <button class="btn btn-primary" id="continueChatBtn">
+                            <i class="fas fa-arrow-right me-2"></i>Tiếp tục cuộc hội thoại này
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Session Modal -->
+<div class="modal fade" id="editSessionModal" tabindex="-1" aria-labelledby="editSessionModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editSessionModalLabel">
+                    <i class="fas fa-edit me-2"></i>Chỉnh sửa cuộc hội thoại
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editSessionForm">
+                    <div class="mb-3">
+                        <label for="sessionTitle" class="form-label">Tiêu đề</label>
+                        <input type="text" class="form-control" id="sessionTitle" placeholder="Nhập tiêu đề cuộc hội thoại">
+                    </div>
+                    <div class="mb-3">
+                        <label for="sessionDescription" class="form-label">Mô tả</label>
+                        <textarea class="form-control" id="sessionDescription" rows="3" placeholder="Nhập mô tả (tùy chọn)"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="sessionTags" class="form-label">Tags</label>
+                        <input type="text" class="form-control" id="sessionTags" placeholder="Nhập tags, phân cách bằng dấu phẩy">
+                        <small class="form-text text-muted">Ví dụ: video, kế hoạch, brainstorm</small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-primary" id="saveSessionBtn">
+                    <i class="fas fa-save me-2"></i>Lưu thay đổi
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteConfirmModalLabel">
+                    <i class="fas fa-exclamation-triangle me-2 text-danger"></i>Xác nhận xóa
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Bạn có chắc chắn muốn xóa cuộc hội thoại này không?</p>
+                <div class="alert alert-warning">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Lưu ý:</strong> Hành động này không thể hoàn tác. Tất cả tin nhắn trong cuộc hội thoại sẽ bị xóa vĩnh viễn.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+                    <i class="fas fa-trash me-2"></i>Xóa cuộc hội thoại
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .session-item {
+        border: none;
+        border-radius: 0;
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+    
+    .session-item:hover {
+        background-color: #f8f9fa;
+        border-left: 4px solid #6366f1;
+    }
+    
+    .session-item.active {
+        background-color: #e0e7ff;
+        border-left: 4px solid #6366f1;
+    }
+    
+    .session-item .session-title {
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 4px;
+    }
+    
+    .session-item .session-preview {
+        color: #6b7280;
+        font-size: 0.875rem;
+        margin-bottom: 4px;
+    }
+    
+    .session-item .session-meta {
+        color: #9ca3af;
+        font-size: 0.75rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .session-actions {
+        opacity: 0;
+        transition: opacity 0.2s ease;
+    }
+    
+    .session-item:hover .session-actions {
+        opacity: 1;
+    }
+    
+    .chat-message {
+        max-width: 80%;
+        margin-bottom: 1rem;
+    }
+    
+    .chat-message.user {
+        margin-left: auto;
+    }
+    
+    .chat-message.ai {
+        margin-right: auto;
+    }
+    
+    .message-bubble {
+        padding: 12px 16px;
+        border-radius: 18px;
+        position: relative;
+        word-wrap: break-word;
+    }
+    
+    .message-bubble.user {
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        color: white;
+    }
+    
+    .message-bubble.ai {
+        background: #f1f5f9;
+        color: #334155;
+        border: 1px solid #e2e8f0;
+    }
+    
+    .message-time {
+        font-size: 0.75rem;
+        color: #64748b;
+        margin-top: 4px;
+    }
+    
+    .filter-btn.active {
+        background-color: #6366f1;
+        border-color: #6366f1;
+        color: white;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 2rem;
+        color: #6b7280;
+    }
+    
+    .empty-state i {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        color: #d1d5db;
+    }
+    
+    .session-badges {
+        display: flex;
+        gap: 4px;
+        margin-top: 4px;
+    }
+    
+    .session-badge {
+        background: #e0e7ff;
+        color: #6366f1;
+        padding: 2px 6px;
+        border-radius: 10px;
+        font-size: 0.7rem;
+    }
+    
+    .session-badge.favorite {
+        background: #fef3c7;
+        color: #d97706;
+    }
+    
+    .session-badge.archived {
+        background: #f3f4f6;
+        color: #6b7280;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/modules/ChatHistoryManager.js') }}"></script>
+<script>
+    // Initialize Chat History Manager when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        window.chatHistoryManager = new ChatHistoryManager();
+        window.chatHistoryManager.init();
+    });
+</script>
+{% endblock %} 

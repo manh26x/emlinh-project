@@ -3,7 +3,7 @@ import logging
 from datetime import datetime
 from typing import Dict, List, Optional
 from flask import current_app
-from ..app.models import Chat, Idea, Vector, generate_session_id
+from ..app.models import Chat, ChatSession, Idea, Vector, generate_session_id
 from ..app.extensions import db
 from .embedding_service import get_embedding_service
 from .flow_service import flow_service
@@ -53,6 +53,9 @@ class ChatService:
             )
             db.session.add(chat)
             db.session.commit()
+            
+            # Tự động tạo hoặc cập nhật ChatSession
+            self._ensure_chat_session_exists(session_id, user_message)
             
             # Tạo và lưu embeddings
             self._create_embeddings(chat)
@@ -197,6 +200,266 @@ class ChatService:
         except Exception as e:
             logger.error(f"Error creating embeddings: {str(e)}")
             # Không rollback vì chat đã được lưu thành công
+    
+    def _ensure_chat_session_exists(self, session_id: str, user_message: str):
+        """Tự động tạo ChatSession nếu chưa tồn tại"""
+        try:
+            # Kiểm tra xem session đã tồn tại chưa
+            existing_session = ChatSession.query.filter_by(session_id=session_id).first()
+            
+            if not existing_session:
+                # Tạo title từ tin nhắn đầu tiên
+                title = self._generate_session_title(user_message)
+                
+                # Tạo session mới
+                session = ChatSession(
+                    session_id=session_id,
+                    title=title,
+                    description=f"Cuộc hội thoại bắt đầu với: {user_message[:100]}...",
+                    message_count=1,
+                    last_message_at=datetime.utcnow()
+                )
+                db.session.add(session)
+                db.session.commit()
+                
+                logger.info(f"Auto-created ChatSession: {session_id} with title: {title}")
+                
+        except Exception as e:
+            logger.error(f"Error ensuring chat session exists: {str(e)}")
+            # Không fail toàn bộ flow nếu có lỗi tạo session
+    
+    def _generate_session_title(self, user_message: str) -> str:
+        """Tự động tạo tiêu đề từ tin nhắn đầu tiên"""
+        # Loại bỏ ký tự đặc biệt và cắt ngắn
+        message = user_message.strip()
+        
+        # Các từ khóa để tạo tiêu đề phù hợp
+        if any(keyword in message.lower() for keyword in ['video', 'tạo video', 'làm video']):
+            return f"🎬 Tạo video - {message[:30]}..."
+        elif any(keyword in message.lower() for keyword in ['kế hoạch', 'plan', 'chiến lược']):
+            return f"📋 Kế hoạch - {message[:30]}..."
+        elif any(keyword in message.lower() for keyword in ['ý tưởng', 'idea', 'brainstorm']):
+            return f"💡 Ý tưởng - {message[:30]}..."
+        elif any(keyword in message.lower() for keyword in ['hỏi', 'tư vấn', 'giúp']):
+            return f"❓ Tư vấn - {message[:30]}..."
+        else:
+            return f"💬 {message[:40]}..." if len(message) > 40 else f"💬 {message}"
+    
+    def save_progress_message(self, session_id: str, message: str, step: str = "progress", data: dict = None) -> Dict:
+        """
+        Lưu progress message vào database để hiển thị trong lịch sử chat
+        
+        Args:
+            session_id (str): ID session chat
+            message (str): Nội dung message
+            step (str): Tên bước (progress, completed, error, etc.)
+            data (dict): Data bổ sung của step
+            
+        Returns:
+            Dict: Kết quả lưu message
+        """
+        try:
+            # Tự động tạo session nếu chưa có
+            self._ensure_chat_session_exists(session_id, "Video creation progress")
+            
+            # Lưu progress message như AI response với user_message rỗng
+            chat = Chat(
+                session_id=session_id,
+                user_message="",  # Empty user message for progress
+                ai_response=message,
+                message_type="progress",
+                timestamp=datetime.utcnow()
+            )
+            db.session.add(chat)
+            db.session.commit()
+            
+            logger.info(f"Saved progress message for session {session_id}: {step}")
+            
+            return {
+                'success': True,
+                'chat_id': chat.id,
+                'session_id': session_id,
+                'message': message,
+                'step': step,
+                'timestamp': chat.timestamp.isoformat()
+            }
+            
+        except Exception as e:
+            logger.error(f"Error saving progress message: {str(e)}")
+            db.session.rollback()
+            return {
+                'success': False,
+                'error': str(e)
+            }
+    
+    # === ChatSession Management Methods ===
+    
+    def get_chat_sessions(self, limit: int = 50, archived: bool = False) -> List[Dict]:
+        """
+        Lấy danh sách các chat sessions
+        
+        Args:
+            limit (int): Số lượng session tối đa
+            archived (bool): Lấy session đã lưu trữ hay không
+            
+        Returns:
+            List[Dict]: Danh sách chat sessions
+        """
+        try:
+            query = ChatSession.query.filter_by(is_archived=archived)\
+                                    .order_by(ChatSession.last_message_at.desc())\
+                                    .limit(limit)
+            
+            sessions = query.all()
+            return [session.to_dict() for session in sessions]
+            
+        except Exception as e:
+            logger.error(f"Error in get_chat_sessions: {str(e)}")
+            return []
+    
+    def get_chat_session(self, session_id: str) -> Optional[Dict]:
+        """
+        Lấy thông tin một chat session
+        
+        Args:
+            session_id (str): ID của session
+            
+        Returns:
+            Optional[Dict]: Thông tin session hoặc None
+        """
+        try:
+            session = ChatSession.query.filter_by(session_id=session_id).first()
+            return session.to_dict() if session else None
+            
+        except Exception as e:
+            logger.error(f"Error in get_chat_session: {str(e)}")
+            return None
+    
+    def create_chat_session(self, session_id: str, title: str = None, description: str = None) -> Dict:
+        """
+        Tạo một chat session mới
+        
+        Args:
+            session_id (str): ID của session
+            title (str): Tiêu đề của session
+            description (str): Mô tả của session
+            
+        Returns:
+            Dict: Thông tin session đã tạo
+        """
+        try:
+            # Kiểm tra xem session đã tồn tại chưa
+            existing_session = ChatSession.query.filter_by(session_id=session_id).first()
+            if existing_session:
+                return existing_session.to_dict()
+            
+            # Tạo session mới
+            session = ChatSession(
+                session_id=session_id,
+                title=title or 'Cuộc hội thoại mới',
+                description=description
+            )
+            db.session.add(session)
+            db.session.commit()
+            
+            return session.to_dict()
+            
+        except Exception as e:
+            logger.error(f"Error in create_chat_session: {str(e)}")
+            db.session.rollback()
+            return {}
+    
+    def update_chat_session(self, session_id: str, title: str = None, description: str = None,
+                           is_archived: bool = None, is_favorite: bool = None, tags: List[str] = None) -> Dict:
+        """
+        Cập nhật thông tin chat session
+        
+        Args:
+            session_id (str): ID của session
+            title (str): Tiêu đề mới
+            description (str): Mô tả mới
+            is_archived (bool): Trạng thái lưu trữ
+            is_favorite (bool): Trạng thái yêu thích
+            tags (List[str]): Danh sách tags
+            
+        Returns:
+            Dict: Thông tin session đã cập nhật
+        """
+        try:
+            session = ChatSession.query.filter_by(session_id=session_id).first()
+            if not session:
+                return {'success': False, 'message': 'Session không tồn tại'}
+            
+            # Cập nhật các trường được cung cấp
+            if title is not None:
+                session.title = title
+            if description is not None:
+                session.description = description
+            if is_archived is not None:
+                session.is_archived = is_archived
+            if is_favorite is not None:
+                session.is_favorite = is_favorite
+            if tags is not None:
+                session.tags = tags
+            
+            db.session.commit()
+            return {'success': True, 'session': session.to_dict()}
+            
+        except Exception as e:
+            logger.error(f"Error in update_chat_session: {str(e)}")
+            db.session.rollback()
+            return {'success': False, 'message': str(e)}
+    
+    def delete_chat_session(self, session_id: str) -> Dict:
+        """
+        Xóa một chat session và tất cả tin nhắn liên quan
+        
+        Args:
+            session_id (str): ID của session
+            
+        Returns:
+            Dict: Kết quả xóa
+        """
+        try:
+            # Xóa tất cả tin nhắn trong session
+            Chat.query.filter_by(session_id=session_id).delete()
+            
+            # Xóa session
+            ChatSession.query.filter_by(session_id=session_id).delete()
+            
+            db.session.commit()
+            return {'success': True, 'message': 'Session đã được xóa'}
+            
+        except Exception as e:
+            logger.error(f"Error in delete_chat_session: {str(e)}")
+            db.session.rollback()
+            return {'success': False, 'message': str(e)}
+    
+    def search_chat_sessions(self, query: str, limit: int = 20) -> List[Dict]:
+        """
+        Tìm kiếm chat sessions theo từ khóa
+        
+        Args:
+            query (str): Từ khóa tìm kiếm
+            limit (int): Số lượng kết quả tối đa
+            
+        Returns:
+            List[Dict]: Danh sách sessions phù hợp
+        """
+        try:
+            # Tìm kiếm theo title, description
+            sessions = ChatSession.query.filter(
+                db.or_(
+                    ChatSession.title.ilike(f'%{query}%'),
+                    ChatSession.description.ilike(f'%{query}%')
+                )
+            ).order_by(ChatSession.last_message_at.desc()).limit(limit).all()
+            
+            return [session.to_dict() for session in sessions]
+            
+        except Exception as e:
+            logger.error(f"Error in search_chat_sessions: {str(e)}")
+            return []
 
 
 # Singleton instance

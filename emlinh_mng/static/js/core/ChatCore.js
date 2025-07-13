@@ -101,12 +101,18 @@ class ChatCore {
         
         // Bắt đầu video creation với realtime updates qua SSE
         try {
+            // Thêm session_id vào video request
+            const videoRequestWithSession = {
+                ...video_request,
+                session_id: this.sessionManager.getSessionId()
+            };
+            
             const response = await fetch('/api/chat/create-video', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(video_request)
+                body: JSON.stringify(videoRequestWithSession)
             });
             
             const result = await response.json();

@@ -204,7 +204,7 @@ def register_routes(app):
                 flow_service.process_message_async(user_message, session_id)
             )
             
-            # Lưu chat vào database
+            # Lưu chat vào database và tự động tạo session
             try:
                 chat = Chat(
                     user_message=user_message,
@@ -215,6 +215,11 @@ def register_routes(app):
                 )
                 db.session.add(chat)
                 db.session.commit()
+                
+                # Tự động tạo hoặc cập nhật ChatSession
+                chat_service = get_chat_service()
+                chat_service._ensure_chat_session_exists(session_id, user_message)
+                
             except Exception as db_error:
                 print(f"⚠️ Database save error: {str(db_error)}")
                 db.session.rollback()
@@ -285,6 +290,197 @@ def register_routes(app):
                 'success': False,
                 'message': f'Lỗi server: {str(e)}'
             }), 500
+
+    # === Chat Session Management Routes ===
+    
+    @app.route('/api/chat/sessions')
+    @csrf.exempt
+    def get_chat_sessions():
+        """Lấy danh sách chat sessions"""
+        try:
+            limit = request.args.get('limit', 50, type=int)
+            archived = request.args.get('archived', False, type=bool)
+            
+            chat_service = get_chat_service()
+            sessions = chat_service.get_chat_sessions(limit, archived)
+            
+            return jsonify({
+                'success': True,
+                'sessions': sessions,
+                'total': len(sessions)
+            })
+            
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'message': f'Lỗi server: {str(e)}'
+            }), 500
+
+    @app.route('/api/chat/sessions/<session_id>')
+    @csrf.exempt
+    def get_chat_session_detail(session_id):
+        """Lấy thông tin chi tiết một chat session"""
+        try:
+            chat_service = get_chat_service()
+            session = chat_service.get_chat_session(session_id)
+            
+            if not session:
+                return jsonify({
+                    'success': False,
+                    'message': 'Session không tồn tại'
+                }), 404
+            
+            return jsonify({
+                'success': True,
+                'session': session
+            })
+            
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'message': f'Lỗi server: {str(e)}'
+            }), 500
+
+    @app.route('/api/chat/sessions', methods=['POST'])
+    @csrf.exempt
+    def create_chat_session():
+        """Tạo chat session mới"""
+        try:
+            data = request.get_json()
+            session_id = data.get('session_id')
+            title = data.get('title')
+            description = data.get('description')
+            
+            if not session_id:
+                return jsonify({
+                    'success': False,
+                    'message': 'session_id là bắt buộc'
+                }), 400
+            
+            chat_service = get_chat_service()
+            session = chat_service.create_chat_session(session_id, title, description)
+            
+            return jsonify({
+                'success': True,
+                'session': session
+            })
+            
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'message': f'Lỗi server: {str(e)}'
+            }), 500
+
+    @app.route('/api/chat/sessions/<session_id>', methods=['PUT'])
+    @csrf.exempt
+    def update_chat_session(session_id):
+        """Cập nhật thông tin chat session"""
+        try:
+            data = request.get_json()
+            title = data.get('title')
+            description = data.get('description')
+            is_archived = data.get('is_archived')
+            is_favorite = data.get('is_favorite')
+            tags = data.get('tags')
+            
+            chat_service = get_chat_service()
+            result = chat_service.update_chat_session(
+                session_id, title, description, is_archived, is_favorite, tags
+            )
+            
+            if result.get('success'):
+                return jsonify(result)
+            else:
+                return jsonify(result), 400
+            
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'message': f'Lỗi server: {str(e)}'
+            }), 500
+
+    @app.route('/api/chat/sessions/<session_id>', methods=['DELETE'])
+    @csrf.exempt
+    def delete_chat_session(session_id):
+        """Xóa chat session"""
+        try:
+            chat_service = get_chat_service()
+            result = chat_service.delete_chat_session(session_id)
+            
+            if result.get('success'):
+                return jsonify(result)
+            else:
+                return jsonify(result), 400
+            
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'message': f'Lỗi server: {str(e)}'
+            }), 500
+
+    @app.route('/api/chat/sessions/search', methods=['POST'])
+    @csrf.exempt
+    def search_chat_sessions():
+        """Tìm kiếm chat sessions"""
+        try:
+            data = request.get_json()
+            query = data.get('query', '').strip()
+            limit = data.get('limit', 20)
+            
+            if not query:
+                return jsonify({
+                    'success': False,
+                    'message': 'Query không được để trống'
+                }), 400
+            
+            chat_service = get_chat_service()
+            sessions = chat_service.search_chat_sessions(query, limit)
+            
+            return jsonify({
+                'success': True,
+                'sessions': sessions,
+                'query': query
+            })
+            
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'message': f'Lỗi server: {str(e)}'
+            }), 500
+    
+    @app.route('/api/chat/progress', methods=['POST'])
+    @csrf.exempt
+    def save_progress_message():
+        """Lưu progress message vào database"""
+        try:
+            data = request.get_json()
+            session_id = data.get('session_id')
+            message = data.get('message')
+            step = data.get('step', 'progress')
+            progress_data = data.get('data', {})
+            
+            if not session_id or not message:
+                return jsonify({
+                    'success': False,
+                    'message': 'Session ID và message là bắt buộc'
+                }), 400
+            
+            chat_service = get_chat_service()
+            result = chat_service.save_progress_message(session_id, message, step, progress_data)
+            
+            return jsonify(result)
+            
+        except Exception as e:
+            logger.error(f"Error saving progress message: {str(e)}")
+            return jsonify({
+                'success': False,
+                'message': f'Lỗi server: {str(e)}'
+            }), 500
+
+    @app.route('/chat-history')
+    def chat_history_page():
+        """Trang lịch sử chat"""
+        return render_template('chat_history.html')
 
     # Note: Ideas endpoints have been simplified - keeping database but removing frontend routes
     # Ideas are still stored in database via chat service but no longer have dedicated management UI
@@ -782,6 +978,7 @@ def register_routes(app):
             composition = data.get('composition', 'Scene-Landscape')
             background = data.get('background', 'office')
             voice = data.get('voice', 'nova')
+            session_id = data.get('session_id')  # Nhận session_id từ request
             
             if not topic:
                 return jsonify({
@@ -794,6 +991,7 @@ def register_routes(app):
             
             print(f"🎬 [API] Starting video creation - Job ID: {job_id}")
             print(f"🎬 [API] Topic: {topic}")
+            print(f"🎬 [API] Session ID: {session_id}")
             
             # Chạy video production trong thread riêng để không block response
             def run_video_production():
@@ -808,7 +1006,8 @@ def register_routes(app):
                         background=background,
                         voice=voice,
                         job_id=job_id,
-                        app_instance=app  # Truyền app instance từ route context
+                        app_instance=app,  # Truyền app instance từ route context
+                        session_id=session_id  # Truyền session_id để lưu progress vào database
                     )
                     
                     print(f"🎬 [API] Video production completed for job: {job_id}")

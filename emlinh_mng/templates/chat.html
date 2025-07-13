@@ -88,9 +88,19 @@
                 <div class="card-body">
                     <p class="mb-1 text-sm text-gray-600"><strong>Session ID:</strong></p>
                     <code id="sessionId" class="small text-indigo-600">Đang tạo...</code>
-                    <button id="newSessionBtn" class="btn btn-outline-primary btn-sm mt-2 w-100 rounded-pill">
-                        <i class="fas fa-plus me-1"></i>
-                        Bắt đầu phiên mới
+                    <div class="d-flex gap-2 mt-2">
+                        <button id="newSessionBtn" class="btn btn-outline-primary btn-sm flex-fill rounded-pill">
+                            <i class="fas fa-plus me-1"></i>
+                            Phiên mới
+                        </button>
+                        <button id="editSessionBtn" class="btn btn-outline-warning btn-sm flex-fill rounded-pill">
+                            <i class="fas fa-edit me-1"></i>
+                            Đặt tên cuộc hội thoại
+                        </button>
+                    </div>
+                    <button id="viewHistoryBtn" class="btn btn-outline-info btn-sm mt-2 w-100 rounded-pill">
+                        <i class="fas fa-history me-1"></i>
+                        Xem lịch sử chat
                     </button>
                 </div>
             </div>
@@ -268,6 +278,45 @@
     font-size: 0.875rem;
 }
 </style>
+
+<!-- Save Session Modal -->
+<div class="modal fade" id="saveSessionModal" tabindex="-1" aria-labelledby="saveSessionModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="saveSessionModalLabel">
+                    <i class="fas fa-edit me-2"></i>Chỉnh sửa cuộc hội thoại
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="sessionTitleInput" class="form-label">Tiêu đề cuộc hội thoại</label>
+                    <input type="text" class="form-control" id="sessionTitleInput" placeholder="Nhập tiêu đề cho cuộc hội thoại này">
+                </div>
+                <div class="mb-3">
+                    <label for="sessionDescriptionInput" class="form-label">Mô tả (tùy chọn)</label>
+                    <textarea class="form-control" id="sessionDescriptionInput" rows="3" placeholder="Nhập mô tả ngắn gọn về cuộc hội thoại"></textarea>
+                </div>
+                <div class="mb-3">
+                    <label for="sessionTagsInput" class="form-label">Tags (tùy chọn)</label>
+                    <input type="text" class="form-control" id="sessionTagsInput" placeholder="Nhập tags, phân cách bằng dấu phẩy">
+                    <small class="form-text text-muted">Ví dụ: video, AI, kế hoạch, brainstorm</small>
+                </div>
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Lưu ý:</strong> Cuộc hội thoại được tự động lưu khi bạn bắt đầu chat. Bạn có thể chỉnh sửa tên và thông tin để dễ tìm kiếm sau này.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-success" id="confirmSaveBtn">
+                    <i class="fas fa-check me-2"></i>Cập nhật thông tin
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}

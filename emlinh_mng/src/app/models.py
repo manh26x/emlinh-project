@@ -185,6 +185,57 @@ class Vector(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
 
+class ChatSession(db.Model):
+    """Chat session model for storing conversation metadata"""
+    __tablename__ = 'chat_sessions'
+    __table_args__ = {'extend_existing': True}
+    
+    id = db.Column(db.Integer, primary_key=True)
+    session_id = db.Column(db.String(255), unique=True, nullable=False, index=True)
+    title = db.Column(db.String(255), nullable=True)  # User can set custom title
+    description = db.Column(db.Text, nullable=True)
+    message_count = db.Column(db.Integer, default=0)
+    is_archived = db.Column(db.Boolean, default=False)
+    is_favorite = db.Column(db.Boolean, default=False)
+    tags = db.Column(JSON)  # Array of tags for categorization
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    last_message_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    
+    # Relationship with Chat messages
+    messages = db.relationship('Chat', backref='chat_session', lazy='dynamic',
+                             primaryjoin='ChatSession.session_id == Chat.session_id',
+                             foreign_keys='[Chat.session_id]')
+    
+    def __repr__(self):
+        return f'<ChatSession {self.session_id} - {self.title}>'
+    
+    def to_dict(self):
+        """Convert model to dictionary"""
+        return {
+            'id': self.id,
+            'session_id': self.session_id,
+            'title': self.title,
+            'description': self.description,
+            'message_count': self.message_count,
+            'is_archived': self.is_archived,
+            'is_favorite': self.is_favorite,
+            'tags': self.tags,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'last_message_at': self.last_message_at.isoformat() if self.last_message_at else None
+        }
+    
+    def get_first_message(self):
+        """Get the first message from this session"""
+        first_chat = self.messages.order_by(Chat.timestamp.asc()).first()
+        return first_chat.user_message if first_chat else None
+    
+    def get_last_message(self):
+        """Get the last message from this session"""
+        last_chat = self.messages.order_by(Chat.timestamp.desc()).first()
+        return last_chat.user_message if last_chat else None
+
 def generate_session_id():
     """Generate a unique session ID for chat"""
     return str(uuid.uuid4())

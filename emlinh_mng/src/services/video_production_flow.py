@@ -671,7 +671,8 @@ def create_video_from_topic_realtime(
     background: str = "office",
     voice: str = "nova",
     job_id: str = "",
-    app_instance=None  # Flask app instance parameter
+    app_instance=None,  # Flask app instance parameter
+    session_id: str = None  # Session ID for database storage
 ) -> Dict[str, Any]:
     """
     Hàm tạo video với realtime updates qua Server-Sent Events
@@ -690,7 +691,7 @@ def create_video_from_topic_realtime(
     """
     
     def store_progress(step: str, message: str, progress: int, data: dict = None):
-        """Helper function để store progress events cho SSE"""
+        """Helper function để store progress events cho SSE và database"""
         try:
             event_data = {
                 'job_id': job_id,
@@ -705,7 +706,7 @@ def create_video_from_topic_realtime(
             print(f"📡 [SSE] Job ID: {job_id}")
             print(f"📡 [SSE] Event data: {event_data}")
             
-            # Use app_instance instead of current_app
+            # Store in SSE progress store
             if app_instance:
                 if not hasattr(app_instance, 'video_progress_store'):
                     from collections import defaultdict
@@ -715,6 +716,42 @@ def create_video_from_topic_realtime(
                 print(f"✅ [SSE] Event stored successfully")
             else:
                 print(f"⚠️ [SSE] No app instance provided - cannot store progress")
+            
+            # Store in database for chat history
+            try:
+                from ..services.chat_service import get_chat_service
+                
+                # Use session_id from parameter or fallback to job_id
+                db_session_id = session_id or job_id
+                
+                # Format message for database
+                formatted_message = f"**{step}**: {message}"
+                if progress > 0:
+                    formatted_message += f"\n\n📊 **Tiến độ**: {progress}%"
+                
+                # Add data details if available
+                if data:
+                    if 'script_preview' in data:
+                        formatted_message += f"\n\n📝 **Script preview**: {data['script_preview']}"
+                    if 'actual_duration' in data:
+                        formatted_message += f"\n\n⏱️ **Thời lượng thực tế**: {data['actual_duration']}s"
+                    if 'audio_file' in data:
+                        formatted_message += f"\n\n🎵 **Audio file**: {data['audio_file']}"
+                    if 'video_id' in data:
+                        formatted_message += f"\n\n🎬 **Video ID**: {data['video_id']}"
+                
+                # Save to database
+                chat_service = get_chat_service()
+                result = chat_service.save_progress_message(db_session_id, formatted_message, step, data)
+                
+                if result.get('success'):
+                    print(f"✅ [DB] Progress saved to database for session: {db_session_id}")
+                else:
+                    print(f"⚠️ [DB] Failed to save progress to database: {result.get('error', 'Unknown error')}")
+                    
+            except Exception as db_error:
+                print(f"⚠️ [DB] Error saving progress to database: {str(db_error)}")
+                # Don't fail the entire flow if database save fails
             
         except Exception as e:
             print(f"⚠️ [SSE] Error storing progress: {str(e)}")
